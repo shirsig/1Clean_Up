@@ -7,7 +7,7 @@ self:SetScript('OnUpdate', function()
 end)
 self:RegisterEvent('ADDON_LOADED')
 
-BS_bagClasses = {
+self.bagClasses = {
 	
 	-- ammo pouches
 	{["keywords"] = {"ammo", "shot", "bandolier"}}, 
@@ -63,7 +63,7 @@ function self:partialStacks()
 
 	local partialStacks = {}
 
-	for _, group in BS_bagClasses do
+	for _, group in self.bagClasses do
 
 		for _, bag in group.bags do
 		
@@ -142,7 +142,7 @@ function self:UPDATE()
 		local incomplete
 		local locked = {}
 
-		for key, task in BS_tasks do
+		for key, task in self.tasks do
 
 			if not task.completed then
 				local _, _, srcBag, srcSlot = strfind(key, '(%d+):(%d+)')
@@ -161,9 +161,9 @@ function self:UPDATE()
 					locked[srcBag..':'..srcSlot] = true
 					locked[task.dstBag..':'..task.dstSlot] = true
 
-					if BS_tasks[task.dstBag..':'..task.dstSlot] then
-						BS_tasks[srcBag..':'..srcSlot] = BS_tasks[task.dstBag..':'..task.dstSlot]
-						BS_tasks[task.dstBag..':'..task.dstSlot] = {completed = true}
+					if self.tasks[task.dstBag..':'..task.dstSlot] then
+						self.tasks[srcBag..':'..srcSlot] = self.tasks[task.dstBag..':'..task.dstSlot]
+						self.tasks[task.dstBag..':'..task.dstSlot] = {completed = true}
 					end
 					task.completed = true
 		        
@@ -201,7 +201,7 @@ function self:multiLT(xs, ys)
 end
 
 function self:prepareSorting()
-	for _, group in BS_bagClasses do
+	for _, group in self.bagClasses do
 
 		local position = 0
 		for _, bag in group.bags do
@@ -291,7 +291,7 @@ function self:prepareSorting()
 			end
 				
 			if item.bag ~= group.bags[bagIndex] or item.slot ~= slot then
-				BS_tasks[item.bag..':'..item.slot] = {
+				self.tasks[item.bag..':'..item.slot] = {
 					dstBag = group.bags[bagIndex],
 					dstSlot = slot,
 				}
@@ -306,8 +306,8 @@ end
 
 function self:go(...)
 
- 	BS_tasks = {}
-	for _, groupData in BS_bagClasses do
+ 	self.tasks = {}
+	for _, groupData in self.bagClasses do
     	groupData.bags = {}
     	groupData.items = {}
 	end
@@ -321,7 +321,7 @@ function self:go(...)
 			local bagName = strlower(GetBagName(bag) or '')
 
 			local assigned = false
-			for _, group in BS_bagClasses do
+			for _, group in self.bagClasses do
 
 				for _, keyword in group.keywords do
 				
@@ -339,7 +339,7 @@ function self:go(...)
 				
 			if not assigned then
 				
-				tinsert(BS_bagClasses['standard'].bags, bag)
+				tinsert(self.bagClasses['standard'].bags, bag)
 					
 			end
 
