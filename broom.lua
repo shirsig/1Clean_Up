@@ -42,21 +42,20 @@ self.permanent = {
 }
 
 function self:ADDON_LOADED()
-	if arg1 ~= 'neat' then
+	if arg1 ~= 'broom_tooltip' then
 		return
 	end
 
-	SlashCmdList['neatbags'] = function()
-		self:go(4, 3, 2, 1, 0)
+	SlashCmdList['broom'] = function(arg)
+		if arg == 'bags' then
+			self:go(4, 3, 2, 1, 0)
+		elseif arg == 'bank' then
+			self:go(-1, 11, 10, 9, 8, 7, 6, 5)
+		end
 	end
-  	SLASH_neatbags1 = '/neatbags'
+  	SLASH_broom1 = '/broom'
 
-	SlashCmdList['neatbank'] = function()
-		self:go(-1, 11, 10, 9, 8, 7, 6, 5)
-	end
-  	SLASH_neatbank1 = '/neatbank'
-
-	CreateFrame('GameTooltip', 'neat_tooltip', nil, 'GameTooltipTemplate')
+	CreateFrame('GameTooltip', 'broom_tooltip', nil, 'GameTooltipTemplate')
 end
 
 function self:partialStacks()
@@ -217,11 +216,11 @@ function self:prepareSorting()
 
 					local newItem = { key = {}, name = itemName }
 					
-					neat_tooltip:SetOwner(self, ANCHOR_NONE)
-					neat_tooltip:ClearLines()
-					neat_tooltip:SetBagItem(bag, slot)
-					local tooltipLine2 = getglobal('neat_tooltipTextLeft2'):GetText()
-					neat_tooltip:Hide()
+					broom_tooltip:SetOwner(self, ANCHOR_NONE)
+					broom_tooltip:ClearLines()
+					broom_tooltip:SetBagItem(bag, slot)
+					local tooltipLine2 = getglobal('broom_tooltipTextLeft2'):GetText()
+					broom_tooltip:Hide()
 
 					-- soulbound items
 					if tooltipLine2 and tooltipLine2 == ITEM_SOULBOUND then
