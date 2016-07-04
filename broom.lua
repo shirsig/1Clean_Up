@@ -51,7 +51,7 @@ function self:ADDON_LOADED()
 		if arg == 'bags' then
 			self:go(4, 3, 2, 1, 0)
 		elseif arg == 'bank' then
-			self:go(-1, 11, 10, 9, 8, 7, 6, 5)
+			self:go(10, 9, 8, 7, 6, 5, -1)
 		end
 	end
 
@@ -146,7 +146,7 @@ function self:UPDATE()
 
 				incomplete = true
 
-				local _, _, srcBag, srcSlot = strfind(key, '(%d+):(%d+)')
+				local _, _, srcBag, srcSlot = strfind(key, '(-?%d+):(%d+)')
 
 		        local _, _, srcLocked = GetContainerItemInfo(srcBag, srcSlot)
 		        local _, _, dstLocked = GetContainerItemInfo(task.dstBag, task.dstSlot)
