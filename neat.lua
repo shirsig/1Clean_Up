@@ -140,20 +140,26 @@ function self:UPDATE()
 	if self.state == 'sorting' then
 
 		local incomplete
+		local locked = {}
 
 		for key, task in BS_tasks do
 
 			if not task.completed then
 				local _, _, srcBag, srcSlot = strfind(key, '(%d+):(%d+)')
 
-		        local _, _, locked1 = GetContainerItemInfo(srcBag, srcSlot)
-		        local _, _, locked2 = GetContainerItemInfo(task.dstBag, task.dstSlot)
+		        local _, _, srcLocked = GetContainerItemInfo(srcBag, srcSlot)
+		        srcLocked = srcLocked or locked[srcBag..':'..srcSlot]
+		        local _, _, dstLocked = GetContainerItemInfo(task.dstBag, task.dstSlot)
+		        dstLocked = dstLocked or locked[task.dstBag..':'..task.dstSlot]
 		        
-				if not locked1 and not locked2 then
+				if not srcLocked and not dstLocked then
 				
 					ClearCursor()
 		           	PickupContainerItem(srcBag, srcSlot)
 					PickupContainerItem(task.dstBag, task.dstSlot)
+
+					locked[srcBag..':'..srcSlot] = true
+					locked[task.dstBag..':'..task.dstSlot] = true
 
 					if BS_tasks[task.dstBag..':'..task.dstSlot] then
 						BS_tasks[srcBag..':'..srcSlot] = BS_tasks[task.dstBag..':'..task.dstSlot]
@@ -197,10 +203,11 @@ end
 function self:prepareSorting()
 	for _, group in BS_bagClasses do
 
+		local position = 0
 		for _, bag in group.bags do
 		
-			for slot=1,GetContainerNumSlots(bag) do
-			
+			for slot=GetContainerNumSlots(bag),1,-1 do
+				position = position + 1
 				local _, _, itemID = strfind(GetContainerItemLink(bag, slot) or '', 'item:(%d+)')
 				itemID = tonumber(itemID)
 				
@@ -218,7 +225,7 @@ function self:prepareSorting()
 					neat_tooltip:Hide()
 
 					-- soulbound items
-					if tooltipLine2 and tooltipLine2 == 'Soulbound' then
+					if tooltipLine2 and tooltipLine2 == ITEM_SOULBOUND then
 						tinsert(newItem.key, 1)
 					
 					-- permanent items
@@ -258,6 +265,7 @@ function self:prepareSorting()
 					tinsert(newItem.key, itemSubType)
 					tinsert(newItem.key, itemName)
 					tinsert(newItem.key, 1/count)
+					tinsert(newItem.key, position)
 
 					newItem.bag = bag
 					newItem.slot = slot
@@ -282,10 +290,12 @@ function self:prepareSorting()
 				slot = GetContainerNumSlots(group.bags[bagIndex])
 			end
 				
-			BS_tasks[item.bag..':'..item.slot] = {
-				dstBag = group.bags[bagIndex],
-				dstSlot = slot,
-			}
+			if item.bag ~= group.bags[bagIndex] or item.slot ~= slot then
+				BS_tasks[item.bag..':'..item.slot] = {
+					dstBag = group.bags[bagIndex],
+					dstSlot = slot,
+				}
+			end
 
 	        slot = slot - 1
 	
