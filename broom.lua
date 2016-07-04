@@ -42,18 +42,18 @@ self.permanent = {
 }
 
 function self:ADDON_LOADED()
-	if arg1 ~= 'broom_tooltip' then
+	if arg1 ~= 'broom' then
 		return
 	end
 
-	SlashCmdList['broom'] = function(arg)
+  	SLASH_BROOM1 = '/broom'
+	function SlashCmdList.BROOM(arg)
 		if arg == 'bags' then
 			self:go(4, 3, 2, 1, 0)
 		elseif arg == 'bank' then
 			self:go(-1, 11, 10, 9, 8, 7, 6, 5)
 		end
 	end
-  	SLASH_broom1 = '/broom'
 
 	CreateFrame('GameTooltip', 'broom_tooltip', nil, 'GameTooltipTemplate')
 end
