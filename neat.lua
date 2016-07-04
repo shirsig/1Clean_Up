@@ -140,7 +140,6 @@ function self:UPDATE()
 	if self.state == 'sorting' then
 
 		local incomplete
-		local locked = {}
 
 		for key, task in self.tasks do
 
@@ -151,9 +150,7 @@ function self:UPDATE()
 				local _, _, srcBag, srcSlot = strfind(key, '(%d+):(%d+)')
 
 		        local _, _, srcLocked = GetContainerItemInfo(srcBag, srcSlot)
-		        srcLocked = srcLocked or locked[srcBag..':'..srcSlot]
 		        local _, _, dstLocked = GetContainerItemInfo(task.dstBag, task.dstSlot)
-		        dstLocked = dstLocked or locked[task.dstBag..':'..task.dstSlot]
 		        
 				if not srcLocked and not dstLocked then
 				
@@ -161,14 +158,11 @@ function self:UPDATE()
 		           	PickupContainerItem(srcBag, srcSlot)
 					PickupContainerItem(task.dstBag, task.dstSlot)
 
-					locked[srcBag..':'..srcSlot] = true
-					locked[task.dstBag..':'..task.dstSlot] = true
-
 					if self.tasks[task.dstBag..':'..task.dstSlot] then
 						self.tasks[srcBag..':'..srcSlot] = self.tasks[task.dstBag..':'..task.dstSlot]
 						self.tasks[task.dstBag..':'..task.dstSlot] = {completed = true}
 					end
-					
+
 					task.completed = true
 
 		        end
