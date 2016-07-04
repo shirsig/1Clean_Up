@@ -63,9 +63,9 @@ function self:partialStacks()
 
 	local partialStacks = {}
 
-	for _, group in self.bagClasses do
+	for _, bagClass in self.bagClasses do
 
-		for _, bag in group.bags do
+		for _, bag in bagClass.bags do
 		
 			for slot=1, GetContainerNumSlots(bag) do
 
@@ -145,6 +145,9 @@ function self:UPDATE()
 		for key, task in self.tasks do
 
 			if not task.completed then
+
+				incomplete = true
+
 				local _, _, srcBag, srcSlot = strfind(key, '(%d+):(%d+)')
 
 		        local _, _, srcLocked = GetContainerItemInfo(srcBag, srcSlot)
@@ -165,18 +168,19 @@ function self:UPDATE()
 						self.tasks[srcBag..':'..srcSlot] = self.tasks[task.dstBag..':'..task.dstSlot]
 						self.tasks[task.dstBag..':'..task.dstSlot] = {completed = true}
 					end
+					
 					task.completed = true
-		        
-		        end
 
-		        incomplete = incomplete or not task.completed
+		        end
 	        end
-			
 		end
 		
-		if not incomplete then
-		    self.state = nil
+		for _, task in self.tasks do
+			if not task.completed then
+				return
+			end
 		end
+		self.state = nil
 
 	end
 end
@@ -201,10 +205,11 @@ function self:multiLT(xs, ys)
 end
 
 function self:prepareSorting()
-	for _, group in self.bagClasses do
+	for _, bagClass in self.bagClasses do
 
+		local items = {}
 		local position = 0
-		for _, bag in group.bags do
+		for _, bag in bagClass.bags do
 		
 			for slot=GetContainerNumSlots(bag),1,-1 do
 				position = position + 1
@@ -270,7 +275,7 @@ function self:prepareSorting()
 					newItem.bag = bag
 					newItem.slot = slot
 
-					tinsert(group.items, newItem)
+					tinsert(items, newItem)
 					
 				end
 				
@@ -278,21 +283,21 @@ function self:prepareSorting()
 			
 		end
 		
-		sort(group.items, function(a, b) return self:multiLT(a.key, b.key) end)
+		sort(items, function(a, b) return self:multiLT(a.key, b.key) end)
 		
 		local bagIndex = 0
 		local slot = 0
 
-		for i, item in group.items do
+		for i, item in items do
 
 			if slot < 1 then
 				bagIndex = bagIndex + 1
-				slot = GetContainerNumSlots(group.bags[bagIndex])
+				slot = GetContainerNumSlots(bagClass.bags[bagIndex])
 			end
 				
-			if item.bag ~= group.bags[bagIndex] or item.slot ~= slot then
+			if item.bag ~= bagClass.bags[bagIndex] or item.slot ~= slot then
 				self.tasks[item.bag..':'..item.slot] = {
-					dstBag = group.bags[bagIndex],
+					dstBag = bagClass.bags[bagIndex],
 					dstSlot = slot,
 				}
 			end
@@ -307,9 +312,8 @@ end
 function self:go(...)
 
  	self.tasks = {}
-	for _, groupData in self.bagClasses do
-    	groupData.bags = {}
-    	groupData.items = {}
+	for _, bagClassData in self.bagClasses do
+    	bagClassData.bags = {}
 	end
 
 	for i=1,arg.n do
@@ -321,13 +325,13 @@ function self:go(...)
 			local bagName = strlower(GetBagName(bag) or '')
 
 			local assigned = false
-			for _, group in self.bagClasses do
+			for _, bagClass in self.bagClasses do
 
-				for _, keyword in group.keywords do
+				for _, keyword in bagClass.keywords do
 				
 					if strfind(bagName, keyword) then
 					
-						tinsert(group.bags, bag)
+						tinsert(bagClass.bags, bag)
 						assigned = true
 						break
 						
