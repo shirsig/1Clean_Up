@@ -219,7 +219,14 @@ function broom:prepareSorting()
 					broom_tooltip:SetOwner(self, ANCHOR_NONE)
 					broom_tooltip:ClearLines()
 					broom_tooltip:SetBagItem(bag, slot)
-					local tooltipLine2 = getglobal('broom_tooltipTextLeft2'):GetText()
+					local tooltipLine2 = broom_tooltipTextLeft2:GetText()
+					for i=1,30 do
+						local charges_pattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
+						local _, _, charges = strfind(getglobal('broom_tooltipTextLeft'..i):GetText() or '', charges_pattern)
+						if charges then
+							count = charges
+						end
+					end
 					broom_tooltip:Hide()
 
 					-- soulbound items
