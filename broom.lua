@@ -198,6 +198,9 @@ function broom:multiLT(xs, ys)
 end
 
 function broom:prepareSorting()
+
+ 	self.tasks = {}
+ 	
 	for _, bagClass in self.bagClasses do
 
 		local items = {}
@@ -311,7 +314,6 @@ end
 
 function broom:go(...)
 
- 	self.tasks = {}
 	for _, bagClassData in self.bagClasses do
     	bagClassData.bags = {}
 	end
