@@ -1,13 +1,13 @@
-local self = CreateFrame('Frame')
-self:SetScript('OnEvent', function()
+local broom = CreateFrame('Frame')
+broom:SetScript('OnEvent', function()
 	this[event](this)
 end)
-self:SetScript('OnUpdate', function()
+broom:SetScript('OnUpdate', function()
 	this:UPDATE()
 end)
-self:RegisterEvent('ADDON_LOADED')
+broom:RegisterEvent('ADDON_LOADED')
 
-self.bagClasses = {
+broom.bagClasses = {
 	
 	-- ammo pouches
 	{["keywords"] = {"ammo", "shot", "bandolier"}}, 
@@ -29,7 +29,7 @@ self.bagClasses = {
 	
 }
 
-self.permanent = {
+broom.permanent = {
 	[7005] = true,
 	[5956] = true,
 	[2901] = true,
@@ -41,7 +41,7 @@ self.permanent = {
 	[11511] = true,
 }
 
-function self:ADDON_LOADED()
+function broom:ADDON_LOADED()
 	if arg1 ~= 'broom' then
 		return
 	end
@@ -58,7 +58,7 @@ function self:ADDON_LOADED()
 	CreateFrame('GameTooltip', 'broom_tooltip', nil, 'GameTooltipTemplate')
 end
 
-function self:partialStacks()
+function broom:partialStacks()
 
 	local partialStacks = {}
 
@@ -94,7 +94,7 @@ function self:partialStacks()
 	return partialStacks
 end
 
-function self:UPDATE()
+function broom:UPDATE()
 
 	if self.state == 'stacking' then
 
@@ -178,7 +178,7 @@ function self:UPDATE()
 	end
 end
 
-function self:multiLT(xs, ys)
+function broom:multiLT(xs, ys)
 	local i = 1
 	while true do
 		if xs[i] and ys[i] then
@@ -197,7 +197,7 @@ function self:multiLT(xs, ys)
 	end
 end
 
-function self:prepareSorting()
+function broom:prepareSorting()
 	for _, bagClass in self.bagClasses do
 
 		local items = {}
@@ -302,7 +302,7 @@ function self:prepareSorting()
 	end	
 end
 
-function self:go(...)
+function broom:go(...)
 
  	self.tasks = {}
 	for _, bagClassData in self.bagClasses do
