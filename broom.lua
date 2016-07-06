@@ -35,9 +35,12 @@ broom.mount = {
 
 broom.special = {
 	[5462] = true,
+	[17696] = true,
 	[17117] = true,
+	[13347] = true,
 	[13289] = true,
 	[11511] = true,
+	[20402] = true,
 }
 
 broom.key = {
@@ -50,6 +53,8 @@ broom.key = {
 
 broom.tool = {
 	[7005] = true,
+	[12709] = true,
+	[19727] = true,
 	[5956] = true,
 	[2901] = true,
 	[6219] = true,
@@ -59,7 +64,8 @@ broom.tool = {
 	[11130] = true,
 	[11145] = true,
 	[16207] = true,
-	[9149] = true,	
+	[9149] = true,
+	[15846] = true,	
 	[6256] = true,
 	[6365] = true,
 	[6367] = true,
