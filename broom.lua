@@ -244,7 +244,7 @@ function broom:prepareSortingTasks()
 				
 				if itemID then
 					
-					local itemName, itemLink, itemRarity, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture = GetItemInfo(itemID)
+					local itemName, itemLink, itemRarity, itemMinLevel, itemClass, itemSubclass, itemStackCount, itemEquipLoc, itemTexture = GetItemInfo(itemID)
 					local _, count = GetContainerItemInfo(bag, slot)
 
 					local newItem = { key = {}, name = itemName }
@@ -297,40 +297,40 @@ function broom:prepareSortingTasks()
 						tinsert(newItem.key, 6)
 
 					-- reagents
-					elseif itemType == itemClasses[9] then
+					elseif itemClass == itemClasses[9] then
 						tinsert(newItem.key, 7)
 
 					-- trade goods
-					elseif itemType == itemClasses[5] then
+					elseif itemClass == itemClasses[5] then
 						tinsert(newItem.key, 8)
 
-					-- consumable items
-					elseif itemType == itemClasses[4] then
+					-- quest items
+					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
+						tinsert(newItem.key, 10)
+
+					-- quest items
+					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
 						tinsert(newItem.key, 10)
 
 					-- usable items
-					elseif usable then
+					elseif usable and itemClass ~= itemClasses[1] and itemClass ~= itemClasses[2] and itemClass ~= itemClasses[8] or itemClass == itemClasses[4] then
 						tinsert(newItem.key, 9)
-										
-					-- quest items
-					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
-						tinsert(newItem.key, 11)
 
 					-- higher quality
 					elseif itemRarity > 1 then
-						tinsert(newItem.key, 12)
+						tinsert(newItem.key, 11)
 
 					-- common quality
 					elseif itemRarity == 1 then
-						tinsert(newItem.key, 13)
+						tinsert(newItem.key, 12)
 
 					-- junk
 					elseif itemRarity == 0 then
-						tinsert(newItem.key, 14)
+						tinsert(newItem.key, 13)
 					end
 					
-					tinsert(newItem.key, itemType)
-					tinsert(newItem.key, itemSubType)
+					tinsert(newItem.key, itemClass)
+					tinsert(newItem.key, itemSubclass)
 					tinsert(newItem.key, itemName)
 					tinsert(newItem.key, 1/count)
 					tinsert(newItem.key, position)
