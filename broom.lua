@@ -29,10 +29,6 @@ broom.bagClasses = {
 	
 }
 
-broom.mount = {
-	
-}
-
 broom.special = {
 	[5462] = true,
 	[17696] = true,
@@ -71,10 +67,36 @@ broom.tool = {
 	[6367] = true,
 }
 
+function broom:set(...)
+	local set = {}
+	for i=1,arg.n do
+		set[arg[i]] = true
+	end
+	return set
+end
+
 function broom:ADDON_LOADED()
 	if arg1 ~= 'broom' then
 		return
 	end
+
+	self.mount = set(
+
+		-- rams
+		5864, 5872, 5873, 18785, 18786, 18787,
+
+		-- horses
+		2411, 2414, 5655, 5656, 18778, 18776, 18777,
+
+		-- sabers
+		8629, 8631, 8632, 18766, 18767, 18902,
+
+		-- mechanostriders
+		8563, 8595, 13321, 13322, 18772, 18773, 18774,
+
+		-- kodos
+		15277, 15290, 18793, 18794, 18795,
+	)
 
   	SLASH_BROOM1 = '/broom'
 	function SlashCmdList.BROOM(arg)
@@ -323,7 +345,7 @@ function broom:prepareSortingTasks()
 
 					-- junk
 					elseif itemRarity == 0 then
-						tinsert(newItem.key, 13)
+						tinsert(newItem.key, 14)
 					end
 					
 					tinsert(newItem.key, itemType)
