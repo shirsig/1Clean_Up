@@ -10,22 +10,22 @@ broom:RegisterEvent('ADDON_LOADED')
 broom.bagClasses = {
 	
 	-- ammo pouches
-	{["keywords"] = {"ammo", "shot", "bandolier"}}, 
+	{['ids'] = {2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320}}, 
 	
 	-- quivers
-	{["keywords"] = {"quiver", "lamina"}}, 
+	{['ids'] = {2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714}}, 
 
 	-- enchanting bags
-	{["keywords"] = {"enchant"}}, 
+	{['ids'] = {22246, 22248, 22249}}, 
 
 	-- soul bags
-    {["keywords"] = {"felcloth", "soul"}}, 
+    {['ids'] = {22243, 22244, 21340, 21341, 21342}}, 
 
 	-- herb bags
-    {["keywords"] = {"cenarius", "herb"}}, 
+    {['ids'] = {22250, 22251, 22252}}, 
 	
 	-- generic bags
-	["standard"] = {["keywords"] = {}},
+	['generic'] = {['ids'] = {}},
 	
 }
 
@@ -232,6 +232,8 @@ function broom:prepareSorting()
 					end
 					broom_tooltip:Hide()
 
+					local itemClasses = { GetAuctionItemClasses() }
+
 					-- soulbound items
 					if tooltipLine2 and tooltipLine2 == ITEM_SOULBOUND then
 						tinsert(newItem.key, 1)
@@ -241,19 +243,19 @@ function broom:prepareSorting()
 						tinsert(newItem.key, 1)
 
 					-- reagents
-					elseif itemType == 'Reagent' then
+					elseif itemType == itemClasses[9] then
 						tinsert(newItem.key, 2)
 
 					-- consumable items
-					elseif itemType == 'Consumable' then
+					elseif itemType == itemClasses[4] then
 						tinsert(newItem.key, 3)
 					
 					-- quest items
-					elseif itemType == 'Quest' then
+					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
 						tinsert(newItem.key, 4)
 
 					-- trade goods
-					elseif itemType == 'Trade Goods' then
+					elseif itemType == itemClasses[5] then
 						tinsert(newItem.key, 5)
 
 					-- higher quality
@@ -324,29 +326,21 @@ function broom:go(...)
 
 		if GetContainerNumSlots(bag) > 0 then
 
-			local bagName = strlower(GetBagName(bag) or '')
+			local bagName = GetBagName(bag)
 
 			local assigned = false
 			for _, bagClass in self.bagClasses do
-
-				for _, keyword in bagClass.keywords do
-				
-					if strfind(bagName, keyword) then
-					
+				for _, id in bagClass.ids do
+					if bagName == GetItemInfo(id) then
 						tinsert(bagClass.bags, bag)
 						assigned = true
-						break
-						
-					end
-					
-				end
-				
+						break	
+					end		
+				end	
 			end
 				
 			if not assigned then
-				
-				tinsert(self.bagClasses['standard'].bags, bag)
-					
+				tinsert(self.bagClasses['generic'].bags, bag)
 			end
 
 		end
