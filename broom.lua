@@ -29,16 +29,39 @@ broom.bagClasses = {
 	
 }
 
-broom.permanent = {
+broom.mount = {
+	
+}
+
+broom.special = {
+	[5462] = true,
+	[17117] = true,
+	[13289] = true,
+	[11511] = true,
+}
+
+broom.key = {
+	[9240] = true,
+	[17191] = true,
+	[13544] = true,
+	[12324] = true,
+	[16309] = true,
+}
+
+broom.tool = {
 	[7005] = true,
 	[5956] = true,
 	[2901] = true,
-	[6256] = true,
 	[6219] = true,
 	[10498] = true,
+	[6218] = true,
+	[6339] = true,
+	[11130] = true,
+	[11145] = true,
+	[16207] = true,	
+	[6256] = true,
 	[6365] = true,
 	[6367] = true,
-	[11511] = true,
 }
 
 function broom:ADDON_LOADED()
@@ -106,7 +129,7 @@ function broom:UPDATE()
 
 			while true do
 				local src, dst
-				for _, partialStack in ipairs(partialStacks) do
+				for _, partialStack in partialStacks do
 
 					local _, _, locked = GetContainerItemInfo(partialStack.bag, partialStack.slot)
 					if not locked then
@@ -223,52 +246,70 @@ function broom:prepareSorting()
 					broom_tooltip:ClearLines()
 					broom_tooltip:SetBagItem(bag, slot)
 					local tooltipLine2 = broom_tooltipTextLeft2:GetText()
+					local mount
 					for i=1,30 do
 						local charges_pattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
+						local mount_pattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
+
 						local _, _, charges = strfind(getglobal('broom_tooltipTextLeft'..i):GetText() or '', charges_pattern)
 						if charges then
 							count = charges
 						end
 					end
-					broom_tooltip:Hide()
 
 					local itemClasses = { GetAuctionItemClasses() }
 
+					-- hearthstone
+					if itemID == 6948 then
+						tinsert(newItem.key, 1)
+
+					-- mounts
+					elseif self.mount[itemID] then
+						tinsert(newItem.key, 2)
+
+					-- special items
+					elseif self.special[itemID] then
+						tinsert(newItem.key, 3)
+
+					-- key items
+					elseif self.key[itemID] then
+						tinsert(newItem.key, 4)
+
+					-- tools
+					elseif self.tool[itemID] then
+						tinsert(newItem.key, 5)
+
 					-- soulbound items
-					if tooltipLine2 and tooltipLine2 == ITEM_SOULBOUND then
-						tinsert(newItem.key, 1)
-					
-					-- permanent items
-					elseif self.permanent[itemID] then
-						tinsert(newItem.key, 1)
+					elseif tooltipLine2 and tooltipLine2 == ITEM_SOULBOUND then
+						tinsert(newItem.key, 6)
 
 					-- reagents
 					elseif itemType == itemClasses[9] then
-						tinsert(newItem.key, 2)
+						tinsert(newItem.key, 7)
 
 					-- consumable items
 					elseif itemType == itemClasses[4] then
-						tinsert(newItem.key, 3)
+						tinsert(newItem.key, 8)
 					
 					-- quest items
 					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
-						tinsert(newItem.key, 4)
+						tinsert(newItem.key, 9)
 
 					-- trade goods
 					elseif itemType == itemClasses[5] then
-						tinsert(newItem.key, 5)
+						tinsert(newItem.key, 10)
 
 					-- higher quality
 					elseif itemRarity > 1 then
-						tinsert(newItem.key, 6)
+						tinsert(newItem.key, 11)
 
 					-- common quality
 					elseif itemRarity == 1 then
-						tinsert(newItem.key, 7)
+						tinsert(newItem.key, 12)
 
 					-- junk
 					elseif itemRarity == 0 then
-						tinsert(newItem.key, 8)
+						tinsert(newItem.key, 13)
 					end
 					
 					tinsert(newItem.key, itemType)
