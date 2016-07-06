@@ -253,14 +253,20 @@ function broom:prepareSortingTasks()
 					broom_tooltip:ClearLines()
 					broom_tooltip:SetBagItem(bag, slot)
 					local tooltipLine2 = broom_tooltipTextLeft2:GetText()
-					local mount
+					local usable
 					for i=1,30 do
+						local left_text = getglobal('broom_tooltipTextLeft'..i):GetText() or ''
+
 						local charges_pattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
 						local mount_pattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
 
-						local _, _, charges = strfind(getglobal('broom_tooltipTextLeft'..i):GetText() or '', charges_pattern)
+						local _, _, charges = strfind(left_text, charges_pattern)
 						if charges then
 							count = charges
+						end
+
+						if strfind(left_text, '^'..ITEM_SPELL_TRIGGER_ONUSE) then
+							usable = true
 						end
 					end
 
@@ -294,25 +300,29 @@ function broom:prepareSortingTasks()
 					elseif itemType == itemClasses[9] then
 						tinsert(newItem.key, 7)
 
-					-- consumable items
-					elseif itemType == itemClasses[4] then
-						tinsert(newItem.key, 8)
-					
-					-- quest items
-					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
-						tinsert(newItem.key, 9)
-
 					-- trade goods
 					elseif itemType == itemClasses[5] then
+						tinsert(newItem.key, 8)
+
+					-- consumable items
+					elseif itemType == itemClasses[4] then
 						tinsert(newItem.key, 10)
+
+					-- usable items
+					elseif usable then
+						tinsert(newItem.key, 9)
+										
+					-- quest items
+					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
+						tinsert(newItem.key, 11)
 
 					-- higher quality
 					elseif itemRarity > 1 then
-						tinsert(newItem.key, 11)
+						tinsert(newItem.key, 12)
 
 					-- common quality
 					elseif itemRarity == 1 then
-						tinsert(newItem.key, 12)
+						tinsert(newItem.key, 13)
 
 					-- junk
 					elseif itemRarity == 0 then
