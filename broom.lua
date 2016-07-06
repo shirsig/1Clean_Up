@@ -160,7 +160,7 @@ function broom:UPDATE()
 		end
 
 		if not incomplete then
-			self:prepareSorting()
+			self:prepareSortingTasks()
 			self.state = 'sorting'
 		end
 
@@ -227,7 +227,7 @@ function broom:multiLT(xs, ys)
 	end
 end
 
-function broom:prepareSorting()
+function broom:prepareSortingTasks()
 
  	self.tasks = {}
  	
