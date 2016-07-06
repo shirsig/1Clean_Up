@@ -176,20 +176,23 @@ function broom:UPDATE()
 
 				incomplete = true
 
-				local _, _, srcBag, srcSlot = strfind(key, '(-?%d+):(%d+)')
+				local _, _, bag, slot = strfind(key, '(-?%d+):(%d+)')
 
-		        local _, _, srcLocked = GetContainerItemInfo(srcBag, srcSlot)
-		        local _, _, dstLocked = GetContainerItemInfo(task.dstBag, task.dstSlot)
+		        local _, _, srcLocked = GetContainerItemInfo(bag, slot)
+		        local _, _, dstLocked = GetContainerItemInfo(task.bag, task.slot)
 		        
 				if not srcLocked and not dstLocked then
 				
 					ClearCursor()
-		           	PickupContainerItem(srcBag, srcSlot)
-					PickupContainerItem(task.dstBag, task.dstSlot)
+		           	PickupContainerItem(bag, slot)
+					PickupContainerItem(task.bag, task.slot)
 
-					if self.tasks[task.dstBag..':'..task.dstSlot] then
-						self.tasks[srcBag..':'..srcSlot] = self.tasks[task.dstBag..':'..task.dstSlot]
-						self.tasks[task.dstBag..':'..task.dstSlot] = {completed = true}
+					local dstTask = self.tasks[task.bag..':'..task.slot]
+					if dstTask then
+						if dstTask.bag ~= bag or dstTask.slot ~= slot then
+							self.tasks[bag..':'..slot] = self.tasks[task.bag..':'..task.slot]
+						end
+						self.tasks[task.bag..':'..task.slot] = {completed = true}
 					end
 
 					task.completed = true
@@ -360,8 +363,8 @@ function broom:prepareSortingTasks()
 				
 			if item.bag ~= bagClass.bags[bagIndex] or item.slot ~= slot then
 				self.tasks[item.bag..':'..item.slot] = {
-					dstBag = bagClass.bags[bagIndex],
-					dstSlot = slot,
+					bag = bagClass.bags[bagIndex],
+					slot = slot,
 				}
 			end
 
