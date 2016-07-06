@@ -188,14 +188,8 @@ function broom:UPDATE()
 					PickupContainerItem(task.bag, task.slot)
 
 					local dstTask = self.tasks[task.bag..':'..task.slot]
-					if dstTask then
-						if dstTask.bag ~= bag or dstTask.slot ~= slot then
-							self.tasks[bag..':'..slot] = self.tasks[task.bag..':'..task.slot]
-						end
-						self.tasks[task.bag..':'..task.slot] = {completed = true}
-					end
-
-					task.completed = true
+					self.tasks[bag..':'..slot] = not (dstTask and dstTask.bag == bag and dstTask.slot == slot) and dstTask or {completed = true}
+					self.tasks[task.bag..':'..task.slot] = {completed = true}
 
 		        end
 	        end
