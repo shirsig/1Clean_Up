@@ -80,7 +80,7 @@ function broom:ADDON_LOADED()
 		return
 	end
 
-	self.mount = set(
+	self.mount = self:set(
 
 		-- rams
 		5864, 5872, 5873, 18785, 18786, 18787,
