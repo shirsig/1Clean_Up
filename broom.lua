@@ -37,6 +37,25 @@ function broom:set(...)
 	return set
 end
 
+function broom:multiLT(xs, ys)
+	local i = 1
+	while true do
+		if xs[i] and ys[i] then
+			if xs[i] < ys[i] then
+				return true
+			elseif xs[i] > ys[i] then
+				return false
+			end
+		elseif not xs[i] and ys[i] then
+			return true
+		else
+			return false
+		end
+
+		i = i + 1
+	end
+end
+
 function broom:ADDON_LOADED()
 	if arg1 ~= 'broom' then
 		return
@@ -89,42 +108,6 @@ function broom:ADDON_LOADED()
 	end
 
 	CreateFrame('GameTooltip', 'broom_tooltip', nil, 'GameTooltipTemplate')
-end
-
-function broom:partialStacks()
-
-	local partialStacks = {}
-
-	for _, bagClass in self.bagClasses do
-
-		for _, bag in bagClass.bags do
-		
-			for slot=1, GetContainerNumSlots(bag) do
-
-				local _, count = GetContainerItemInfo(bag, slot)
-
-				local _, _, itemID = strfind(GetContainerItemLink(bag, slot) or '', 'item:(%d+)')
-				
-				if itemID then
-				
-					local newItem   = {}
-					
-					newItem.sortString = ''
-					
-					local _, _, _, _, _, _, maxStack = GetItemInfo(itemID)
-
-					if count < maxStack then
-						partialStacks[itemID] = partialStacks[itemID] or {}
-						tinsert(partialStacks[itemID], {bag=bag, slot=slot})
-					end
-					
-				end
-				
-			end
-		end
-	end
-
-	return partialStacks
 end
 
 function broom:UPDATE()
@@ -208,23 +191,36 @@ function broom:UPDATE()
 	end
 end
 
-function broom:multiLT(xs, ys)
-	local i = 1
-	while true do
-		if xs[i] and ys[i] then
-			if xs[i] < ys[i] then
-				return true
-			elseif xs[i] > ys[i] then
-				return false
-			end
-		elseif not xs[i] and ys[i] then
-			return true
-		else
-			return false
-		end
+function broom:partialStacks()
 
-		i = i + 1
+	local partialStacks = {}
+
+	for _, bagClass in self.bagClasses do
+
+		for _, bag in bagClass.bags do
+		
+			for slot=1, GetContainerNumSlots(bag) do
+
+				local _, count = GetContainerItemInfo(bag, slot)
+
+				local _, _, itemID = strfind(GetContainerItemLink(bag, slot) or '', 'item:(%d+)')
+				
+				if itemID then
+					
+					local _, _, _, _, _, _, maxStack = GetItemInfo(itemID)
+
+					if count < maxStack then
+						partialStacks[itemID] = partialStacks[itemID] or {}
+						tinsert(partialStacks[itemID], {bag=bag, slot=slot})
+					end
+					
+				end
+				
+			end
+		end
 	end
+
+	return partialStacks
 end
 
 function broom:prepareSortingTasks()
