@@ -10,23 +10,20 @@ broom:RegisterEvent('ADDON_LOADED')
 broom.bagClasses = {
 	
 	-- ammo pouches
-	{['ids'] = {2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320}}, 
+	{2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320}, 
 	
 	-- quivers
-	{['ids'] = {2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714}}, 
+	{2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714}, 
 
 	-- enchanting bags
-	{['ids'] = {22246, 22248, 22249}}, 
+	{22246, 22248, 22249}, 
 
 	-- soul bags
-    {['ids'] = {22243, 22244, 21340, 21341, 21342}}, 
+    {22243, 22244, 21340, 21341, 21342}, 
 
 	-- herb bags
-    {['ids'] = {22250, 22251, 22252}}, 
-	
-	-- generic bags
-	['generic'] = {['ids'] = {}},
-	
+    {22250, 22251, 22252}, 
+
 }
 
 function broom:set(...)
@@ -54,6 +51,36 @@ function broom:multiLT(xs, ys)
 
 		i = i + 1
 	end
+end
+
+function broom:count(bag, slot, link)
+	if not link or GetContainerItemLink(bag, slot) == link then
+		return ({GetContainerItemInfo(bag, slot)})[2] or 0
+	end
+	return 0
+end
+
+function broom:partialStack(bag, slot)
+	local _, count = GetContainerItemInfo(bag, slot)	
+	if count then
+		local _, _, itemID = strfind(GetContainerItemLink(bag, slot), 'item:(%d+)')
+		local _, _, _, _, _, _, stack = GetItemInfo(itemID)
+		if count < stack then
+			return true
+		end
+	end
+end
+
+function broom:move(srcBag, srcSlot, dstBag, dstSlot)
+    local _, _, srcLocked = GetContainerItemInfo(srcBag, srcSlot)
+    local _, _, dstLocked = GetContainerItemInfo(dstBag, dstSlot)
+    
+	if not srcLocked and not dstLocked then
+		ClearCursor()
+       	PickupContainerItem(srcBag, srcSlot)
+		PickupContainerItem(dstBag, dstSlot)
+		return true
+    end
 end
 
 function broom:ADDON_LOADED()
@@ -111,154 +138,92 @@ function broom:ADDON_LOADED()
 end
 
 function broom:UPDATE()
-
-	if self.state == 'stacking' then
+	if self.running then
 
 		local incomplete
 
-		for _, partialStacks in self:partialStacks() do
+		for _, bagGroup in self.bagGroups do
+			for _, bag in bagGroup do
+				for slot=1,GetContainerNumSlots(bag) do
 
-			incomplete = incomplete or getn(partialStacks) > 1
+					local link = GetContainerItemLink(bag, slot)
+					local srcTarget = self.targets[bag..':'..slot]
 
-			while true do
-				local src, dst
-				for _, partialStack in partialStacks do
+					if not (srcTarget and link == srcTarget.link and self:count(bag, slot, srcTarget.link) <= srcTarget.count) then
+						for _, target in self.targets do
+							if target ~= srcTarget and link == target.link and self:count(target.bag, target.slot, target.link) < target.count then
+								incomplete = true
 
-					local _, _, locked = GetContainerItemInfo(partialStack.bag, partialStack.slot)
-					if not locked then
-						if not src then
-							src = partialStack
-						elseif not dst then
-							dst = partialStack
+								if self:move(bag, slot, target.bag, target.slot, target.count - self:count(target.bag, target.slot, target.link)) then
+									break
+								end
+							end
 						end
 					end
 
 				end
-				if dst then
-					ClearCursor()
-		           	PickupContainerItem(src.bag, src.slot)
-					PickupContainerItem(dst.bag, dst.slot)					
-				else
-					break
+			end
+		end
+
+		for _, bagGroup in self.bagGroups do
+			for _, srcBag in bagGroup do
+				for srcSlot=1,GetContainerNumSlots(srcBag) do
+
+					for _, bagGroup in self.bagGroups do
+						for _, dstBag in bagGroup do
+							for dstSlot=1,GetContainerNumSlots(dstBag) do
+
+								if (srcBag ~= dstBag or srcSlot ~= dstSlot) and GetContainerItemLink(srcBag, srcSlot) == GetContainerItemLink(dstBag, dstSlot) and self:partialStack(srcBag, srcSlot) and self:partialStack(dstBag, dstSlot) then
+									self:move(srcBag, srcSlot, dstBag, dstSlot)
+								end
+
+							end
+						end
+					end
+
 				end
 			end
-
 		end
 
 		if not incomplete then
-			self:prepareSortingTasks()
-			self.state = 'sorting'
+			self.running = false
 		end
-
-	end
-
-	if self.state == 'sorting' then
-
-		local incomplete
-
-		for key, task in self.tasks do
-
-			if not task.completed then
-
-				incomplete = true
-
-				local _, _, bag, slot = strfind(key, '(-?%d+):(%d+)')
-
-		        local _, _, srcLocked = GetContainerItemInfo(bag, slot)
-		        local _, _, dstLocked = GetContainerItemInfo(task.bag, task.slot)
-		        
-				if not srcLocked and not dstLocked then
-				
-					ClearCursor()
-		           	PickupContainerItem(bag, slot)
-					PickupContainerItem(task.bag, task.slot)
-
-					local dstTask = self.tasks[task.bag..':'..task.slot]
-					self.tasks[bag..':'..slot] = not (dstTask and dstTask.bag == bag and dstTask.slot == slot) and dstTask or {completed = true}
-					self.tasks[task.bag..':'..task.slot] = {completed = true}
-
-		        end
-	        end
-		end
-		
-		for _, task in self.tasks do
-			if not task.completed then
-				return
-			end
-		end
-		self.state = nil
 
 	end
 end
 
-function broom:partialStacks()
-
-	local partialStacks = {}
-
-	for _, bagClass in self.bagClasses do
-
-		for _, bag in bagClass.bags do
-		
-			for slot=1, GetContainerNumSlots(bag) do
-
-				local _, count = GetContainerItemInfo(bag, slot)
-
-				local _, _, itemID = strfind(GetContainerItemLink(bag, slot) or '', 'item:(%d+)')
-				
-				if itemID then
-					
-					local _, _, _, _, _, _, maxStack = GetItemInfo(itemID)
-
-					if count < maxStack then
-						partialStacks[itemID] = partialStacks[itemID] or {}
-						tinsert(partialStacks[itemID], {bag=bag, slot=slot})
-					end
-					
-				end
-				
-			end
-		end
-	end
-
-	return partialStacks
-end
-
-function broom:prepareSortingTasks()
-
- 	self.tasks = {}
+function broom:determineTargets()
  	
-	for _, bagClass in self.bagClasses do
+	for _, bagGroup in self.bagGroups do
 
-		local items = {}
-		local position = 0
-		for _, bag in bagClass.bags do
-		
-			for slot=GetContainerNumSlots(bag),1,-1 do
-				position = position + 1
-				local _, _, itemID = strfind(GetContainerItemLink(bag, slot) or '', 'item:(%d+)')
-				itemID = tonumber(itemID)
+		local itemMap = {}
+		for _, bag in bagGroup do
+			for slot=1,GetContainerNumSlots(bag) do
+
+				local link = GetContainerItemLink(bag, slot)
 				
-				if itemID then
-					
-					local itemName, itemLink, itemRarity, itemMinLevel, itemClass, itemSubclass, itemStackCount, itemEquipLoc, itemTexture = GetItemInfo(itemID)
-					local _, count = GetContainerItemInfo(bag, slot)
+				if link then
 
-					local newItem = { key = {}, name = itemName }
+					local _, _, itemID = strfind(link, 'item:(%d+)')
+					itemID = tonumber(itemID)
+					
+					local itemName, itemLink, itemRarity, itemMinLevel, itemClass, itemSubclass, itemStackCount, itemEquipLoc = GetItemInfo(itemID)
+					local _, count = GetContainerItemInfo(bag, slot)
 					
 					broom_tooltip:SetOwner(self, ANCHOR_NONE)
 					broom_tooltip:ClearLines()
 					broom_tooltip:SetBagItem(bag, slot)
 					local tooltipLine2 = broom_tooltipTextLeft2:GetText()
-					local usable
+					local charges, usable
 					for i=1,30 do
 						local left_text = getglobal('broom_tooltipTextLeft'..i):GetText() or ''
 
 						local charges_pattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
 						local mount_pattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
 
-						local _, _, charges = strfind(left_text, charges_pattern)
-						if charges then
-							count = charges
+						local _, _, chargeString = strfind(left_text, charges_pattern)
+						if chargeString then
+							charges = charges
 						end
 
 						if strfind(left_text, '^'..ITEM_SPELL_TRIGGER_ONUSE) then
@@ -266,113 +231,128 @@ function broom:prepareSortingTasks()
 						end
 					end
 
+					local key = {}
 					local itemClasses = { GetAuctionItemClasses() }
 
 					-- hearthstone
 					if itemID == 6948 then
-						tinsert(newItem.key, 1)
+						tinsert(key, 1)
 
 					-- mounts
 					elseif self.mount[itemID] then
-						tinsert(newItem.key, 2)
+						tinsert(key, 2)
 
 					-- special items
 					elseif self.special[itemID] then
-						tinsert(newItem.key, 3)
+						tinsert(key, 3)
 
 					-- key items
 					elseif self.key[itemID] then
-						tinsert(newItem.key, 4)
+						tinsert(key, 4)
 
 					-- tools
 					elseif self.tool[itemID] then
-						tinsert(newItem.key, 5)
+						tinsert(key, 5)
 
 					-- soulbound items
 					elseif tooltipLine2 and tooltipLine2 == ITEM_SOULBOUND then
-						tinsert(newItem.key, 6)
+						tinsert(key, 6)
 
 					-- reagents
 					elseif itemClass == itemClasses[9] then
-						tinsert(newItem.key, 7)
+						tinsert(key, 7)
 
 					-- trade goods
 					elseif itemClass == itemClasses[5] then
-						tinsert(newItem.key, 8)
+						tinsert(key, 8)
 
 					-- quest items
 					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
-						tinsert(newItem.key, 10)
+						tinsert(key, 10)
 
 					-- quest items
 					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
-						tinsert(newItem.key, 10)
+						tinsert(key, 10)
 
 					-- usable items
 					elseif usable and itemClass ~= itemClasses[1] and itemClass ~= itemClasses[2] and itemClass ~= itemClasses[8] or itemClass == itemClasses[4] then
-						tinsert(newItem.key, 9)
+						tinsert(key, 9)
 
 					-- higher quality
 					elseif itemRarity > 1 then
-						tinsert(newItem.key, 11)
+						tinsert(key, 11)
 
 					-- common quality
 					elseif itemRarity == 1 then
-						tinsert(newItem.key, 12)
+						tinsert(key, 12)
 
 					-- junk
 					elseif itemRarity == 0 then
-						tinsert(newItem.key, 13)
+						tinsert(key, 13)
 					end
 					
-					tinsert(newItem.key, itemClass)
-					tinsert(newItem.key, itemSubclass)
-					tinsert(newItem.key, itemName)
-					tinsert(newItem.key, 1/count)
-					tinsert(newItem.key, position)
+					tinsert(key, itemClass)
+					tinsert(key, itemSubclass)
+					tinsert(key, itemName)
+					tinsert(key, 1/(charges or 1))
 
-					newItem.bag = bag
-					newItem.slot = slot
-
-					tinsert(items, newItem)
-					
+					itemMap[itemLink] = itemMap[itemLink] or {
+						key = key,
+						bag = bag,
+						slot = slot,
+						link = link,
+						stack = itemStackCount,
+						count = 0,
+					}
+					itemMap[itemLink].count = itemMap[itemLink].count + count
 				end
-				
+
 			end
-			
 		end
 		
+		local items = {}
+		for _, item in itemMap do
+			tinsert(items, item)
+		end
 		sort(items, function(a, b) return self:multiLT(a.key, b.key) end)
 		
+		self.targets = {}
+
 		local bagIndex = 0
 		local slot = 0
 
 		for i, item in items do
 
-			if slot < 1 then
-				bagIndex = bagIndex + 1
-				slot = GetContainerNumSlots(bagClass.bags[bagIndex])
-			end
-				
-			if item.bag ~= bagClass.bags[bagIndex] or item.slot ~= slot then
-				self.tasks[item.bag..':'..item.slot] = {
-					bag = bagClass.bags[bagIndex],
+			while item.count > 0 do
+				if slot < 1 then
+					bagIndex = bagIndex + 1
+					slot = GetContainerNumSlots(bagGroup[bagIndex])
+				end
+					
+				self.targets[bagGroup[bagIndex]..':'..slot] = {
+					bag = bagGroup[bagIndex],
 					slot = slot,
+					link = item.link,
+					count = min(item.count, item.stack),
 				}
-			end
+				item.count = item.count - min(item.count, item.stack)
 
-	        slot = slot - 1
+		        slot = slot - 1
+	        end
 	
 	    end
 	
-	end	
+	end
+
 end
 
-function broom:go(...)
+function broom:determineBagGroups(...)
+	self.bagGroups = {}
 
-	for _, bagClassData in self.bagClasses do
-    	bagClassData.bags = {}
+	for key, bagClass in self.bagClasses do
+    	self.bagGroups[key] = {}
 	end
+	self.bagGroups['generic'] = {}
 
 	for i=1,arg.n do
 	
@@ -383,10 +363,10 @@ function broom:go(...)
 			local bagName = GetBagName(bag)
 
 			local assigned = false
-			for _, bagClass in self.bagClasses do
-				for _, id in bagClass.ids do
+			for key, bagClass in self.bagClasses do
+				for _, id in bagClass do
 					if bagName == GetItemInfo(id) then
-						tinsert(bagClass.bags, bag)
+						tinsert(self.bagGroups[key], bag)
 						assigned = true
 						break	
 					end		
@@ -394,11 +374,15 @@ function broom:go(...)
 			end
 				
 			if not assigned then
-				tinsert(self.bagClasses['generic'].bags, bag)
+				tinsert(self.bagGroups['generic'], bag)
 			end
 
 		end
-	end
+	end	
+end
 
-	self.state = 'stacking'
+function broom:go(...)
+	self:determineBagGroups(unpack(arg))
+	self:determineTargets()
+	self.running = true
 end
