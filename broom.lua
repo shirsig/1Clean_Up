@@ -185,7 +185,9 @@ function broom:UPDATE()
 							for dstSlot=1,GetContainerNumSlots(dstBag) do
 
 								if (srcBag ~= dstBag or srcSlot ~= dstSlot) and GetContainerItemLink(srcBag, srcSlot) == GetContainerItemLink(dstBag, dstSlot) and self:partialStack(srcBag, srcSlot) and self:partialStack(dstBag, dstSlot) then
-									self:move(srcBag, srcSlot, dstBag, dstSlot)
+									if self:move(srcBag, srcSlot, dstBag, dstSlot) then
+										incomplete = true
+									end
 								end
 
 							end
@@ -273,33 +275,25 @@ function broom:determineTargets()
 					elseif itemClass == itemClasses[9] then
 						tinsert(key, 7)
 
-					-- trade goods
-					elseif itemClass == itemClasses[5] then
-						tinsert(key, 8)
-
 					-- quest items
 					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
-						tinsert(key, 10)
-
-					-- quest items
-					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
-						tinsert(key, 10)
-
-					-- usable items
-					elseif usable and itemClass ~= itemClasses[1] and itemClass ~= itemClasses[2] and itemClass ~= itemClasses[8] or itemClass == itemClasses[4] then
 						tinsert(key, 9)
+
+					-- consumables
+					elseif usable and itemClass ~= itemClasses[1] and itemClass ~= itemClasses[2] and itemClass ~= itemClasses[8] or itemClass == itemClasses[4] then
+						tinsert(key, 8)
 
 					-- higher quality
 					elseif itemRarity > 1 then
-						tinsert(key, 11)
+						tinsert(key, 10)
 
 					-- common quality
 					elseif itemRarity == 1 then
-						tinsert(key, 12)
+						tinsert(key, 11)
 
 					-- junk
 					elseif itemRarity == 0 then
-						tinsert(key, 13)
+						tinsert(key, 12)
 					end
 					
 					tinsert(key, itemClass)
