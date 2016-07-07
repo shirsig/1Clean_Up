@@ -196,6 +196,8 @@ function broom:UPDATE()
 					end
 				end
 
+				sort(candidates, function(a, b) return a.key < b.key end)
+
 				for _, candidate in candidates do
 					incomplete = true
 					if self:move(candidate.bag, candidate.slot, target.bag, target.slot) then
