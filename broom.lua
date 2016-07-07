@@ -83,6 +83,35 @@ function broom:move(srcBag, srcSlot, dstBag, dstSlot)
     end
 end
 
+function broom:tooltipInfo(bag, slot)
+	local chargesPattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
+
+	broom_tooltip:SetOwner(self, ANCHOR_NONE)
+	broom_tooltip:ClearLines()
+	broom_tooltip:SetBagItem(bag, slot)
+
+	local charges, usable, soulbound
+	for i=1,30 do
+		local leftText = getglobal('broom_tooltipTextLeft'..i):GetText() or ''
+
+		local _, _, chargeString = strfind(leftText, chargesPattern)
+		if chargeString then
+			charges = tonumber(chargeString)
+		end
+
+		if strfind(leftText, '^'..ITEM_SPELL_TRIGGER_ONUSE) then
+			usable = true
+		end
+
+		if leftText == ITEM_SOULBOUND then
+			soulbound = true
+		end
+	end
+	charges = charges or 1
+
+	return charges, usable, soulbound
+end
+
 function broom:ADDON_LOADED()
 	if arg1 ~= 'broom' then
 		return
@@ -151,10 +180,11 @@ function broom:UPDATE()
 						for slot=1,GetContainerNumSlots(bag) do
 
 							local link = GetContainerItemLink(bag, slot)
+							local charges = self:tooltipInfo(bag, slot)
 							local srcTarget = self.targets[bag..':'..slot]
 
-							local canMoveSrc = not (srcTarget and link == srcTarget.link and self:count(bag, slot, link) <= srcTarget.count)
-							local canMoveToDst = target ~= srcTarget and link == target.link
+							local canMoveSrc = not (srcTarget and link == srcTarget.link and charges == srcTarget.charges and self:count(bag, slot, link) <= srcTarget.count)
+							local canMoveToDst = target ~= srcTarget and link == target.link and charges == target.charges
 							if canMoveSrc and canMoveToDst then
 								tinsert(candidates, {
 									key = abs(self:count(bag, slot) - target.count + self:count(target.bag, target.slot, link)),
@@ -223,26 +253,7 @@ function broom:determineTargets()
 					local itemName, itemLink, itemRarity, itemMinLevel, itemClass, itemSubclass, itemStack, itemEquipLoc = GetItemInfo(itemID)
 					local _, count = GetContainerItemInfo(bag, slot)
 					
-					broom_tooltip:SetOwner(self, ANCHOR_NONE)
-					broom_tooltip:ClearLines()
-					broom_tooltip:SetBagItem(bag, slot)
-					local tooltipLine2 = broom_tooltipTextLeft2:GetText()
-					local charges, usable
-					for i=1,30 do
-						local left_text = getglobal('broom_tooltipTextLeft'..i):GetText() or ''
-
-						local charges_pattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
-						local mount_pattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
-
-						local _, _, chargeString = strfind(left_text, charges_pattern)
-						if chargeString then
-							charges = tonumber(chargeString)
-						end
-
-						if strfind(left_text, '^'..ITEM_SPELL_TRIGGER_ONUSE) then
-							usable = true
-						end
-					end
+					local charges, usable, soulbound = self:tooltipInfo(bag, slot)
 
 					local key = {}
 					local itemClasses = { GetAuctionItemClasses() }
@@ -268,7 +279,7 @@ function broom:determineTargets()
 						tinsert(key, 5)
 
 					-- soulbound items
-					elseif tooltipLine2 and tooltipLine2 == ITEM_SOULBOUND then
+					elseif soulbound then
 						tinsert(key, 6)
 
 					-- reagents
@@ -299,17 +310,18 @@ function broom:determineTargets()
 					tinsert(key, itemClass)
 					tinsert(key, itemSubclass)
 					tinsert(key, itemName)
-					tinsert(key, 1/(charges or 1))
+					tinsert(key, 1/charges)
 
-					itemMap[itemLink] = itemMap[itemLink] or {
+					itemMap[itemLink..'#'..charges] = itemMap[itemLink..'#'..charges] or {
 						key = key,
 						bag = bag,
 						slot = slot,
 						link = link,
 						stack = itemStack,
+						charges = charges,
 						count = 0,
 					}
-					itemMap[itemLink].count = itemMap[itemLink].count + count
+					itemMap[itemLink..'#'..charges].count = itemMap[itemLink..'#'..charges].count + count
 				end
 
 			end
@@ -338,6 +350,7 @@ function broom:determineTargets()
 					bag = bagGroup[bagIndex],
 					slot = slot,
 					link = item.link,
+					charges = item.charges,
 					count = min(item.count, item.stack),
 				}
 				item.count = item.count - min(item.count, item.stack)
