@@ -142,25 +142,36 @@ function broom:UPDATE()
 
 		local incomplete
 
-		for _, bagGroup in self.bagGroups do
-			for _, bag in bagGroup do
-				for slot=1,GetContainerNumSlots(bag) do
+		for _, target in self.targets do
+			local candidates = {}
 
-					local link = GetContainerItemLink(bag, slot)
-					local srcTarget = self.targets[bag..':'..slot]
+			for _, bagGroup in self.bagGroups do
+				for _, bag in bagGroup do
+					for slot=1,GetContainerNumSlots(bag) do
 
-					if not (srcTarget and link == srcTarget.link and self:count(bag, slot, srcTarget.link) <= srcTarget.count) then
-						for _, target in self.targets do
-							if target ~= srcTarget and link == target.link and self:count(target.bag, target.slot, target.link) < target.count then
-								incomplete = true
+						local link = GetContainerItemLink(bag, slot)
+						local srcTarget = self.targets[bag..':'..slot]
 
-								if self:move(bag, slot, target.bag, target.slot, target.count - self:count(target.bag, target.slot, target.link)) then
-									break
-								end
-							end
+						local canMoveSrc = not (srcTarget and link == srcTarget.link and self:count(bag, slot, srcTarget.link) <= srcTarget.count)
+						local canMoveToDst = target ~= srcTarget and link == target.link and self:count(target.bag, target.slot, target.link) < target.count
+						if canMoveSrc and canMoveToDst then
+							tinsert(candidates, {
+								key = -self:count(bag, slot),
+								bag = bag,
+								slot = slot,
+							})
 						end
-					end
 
+					end
+				end
+			end
+
+			sort(candidates, function(a, b) return b.key < b.key end)
+
+			for _, candidate in candidates do
+				incomplete = true
+				if self:move(candidate.bag, candidate.slot, target.bag, target.slot) then
+					break
 				end
 			end
 		end
