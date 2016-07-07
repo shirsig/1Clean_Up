@@ -143,35 +143,35 @@ function broom:UPDATE()
 		local incomplete
 
 		for _, target in self.targets do
-			local candidates = {}
+			if self:count(target.bag, target.slot, target.link) < target.count then
+				local candidates = {}
 
-			for _, bagGroup in self.bagGroups do
-				for _, bag in bagGroup do
-					for slot=1,GetContainerNumSlots(bag) do
+				for _, bagGroup in self.bagGroups do
+					for _, bag in bagGroup do
+						for slot=1,GetContainerNumSlots(bag) do
 
-						local link = GetContainerItemLink(bag, slot)
-						local srcTarget = self.targets[bag..':'..slot]
+							local link = GetContainerItemLink(bag, slot)
+							local srcTarget = self.targets[bag..':'..slot]
 
-						local canMoveSrc = not (srcTarget and link == srcTarget.link and self:count(bag, slot, srcTarget.link) <= srcTarget.count)
-						local canMoveToDst = target ~= srcTarget and link == target.link and self:count(target.bag, target.slot, target.link) < target.count
-						if canMoveSrc and canMoveToDst then
-							tinsert(candidates, {
-								key = -self:count(bag, slot),
-								bag = bag,
-								slot = slot,
-							})
+							local canMoveSrc = not (srcTarget and link == srcTarget.link and self:count(bag, slot, link) <= srcTarget.count)
+							local canMoveToDst = target ~= srcTarget and link == target.link
+							if canMoveSrc and canMoveToDst then
+								tinsert(candidates, {
+									key = abs(self:count(bag, slot) - target.count + self:count(target.bag, target.slot, link)),
+									bag = bag,
+									slot = slot,
+								})
+							end
+
 						end
-
 					end
 				end
-			end
 
-			sort(candidates, function(a, b) return b.key < b.key end)
-
-			for _, candidate in candidates do
-				incomplete = true
-				if self:move(candidate.bag, candidate.slot, target.bag, target.slot) then
-					break
+				for _, candidate in candidates do
+					incomplete = true
+					if self:move(candidate.bag, candidate.slot, target.bag, target.slot) then
+						break
+					end
 				end
 			end
 		end
@@ -218,7 +218,7 @@ function broom:determineTargets()
 					local _, _, itemID = strfind(link, 'item:(%d+)')
 					itemID = tonumber(itemID)
 					
-					local itemName, itemLink, itemRarity, itemMinLevel, itemClass, itemSubclass, itemStackCount, itemEquipLoc = GetItemInfo(itemID)
+					local itemName, itemLink, itemRarity, itemMinLevel, itemClass, itemSubclass, itemStack, itemEquipLoc = GetItemInfo(itemID)
 					local _, count = GetContainerItemInfo(bag, slot)
 					
 					broom_tooltip:SetOwner(self, ANCHOR_NONE)
@@ -312,7 +312,7 @@ function broom:determineTargets()
 						bag = bag,
 						slot = slot,
 						link = link,
-						stack = itemStackCount,
+						stack = itemStack,
 						count = 0,
 					}
 					itemMap[itemLink].count = itemMap[itemLink].count + count
