@@ -236,7 +236,7 @@ function broom:determineTargets()
 
 						local _, _, chargeString = strfind(left_text, charges_pattern)
 						if chargeString then
-							charges = charges
+							charges = tonumber(chargeString)
 						end
 
 						if strfind(left_text, '^'..ITEM_SPELL_TRIGGER_ONUSE) then
