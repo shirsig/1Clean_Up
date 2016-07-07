@@ -53,8 +53,8 @@ function broom:multiLT(xs, ys)
 	end
 end
 
-function broom:count(bag, slot, link)
-	if not link or GetContainerItemLink(bag, slot) == link then
+function broom:count(bag, slot, link, charges)
+	if (not link or GetContainerItemLink(bag, slot) == link) and (not charges or charges == self:tooltipInfo(bag, slot)) then
 		return ({GetContainerItemInfo(bag, slot)})[2] or 0
 	end
 	return 0
@@ -107,9 +107,8 @@ function broom:tooltipInfo(bag, slot)
 			soulbound = true
 		end
 	end
-	charges = charges or 1
 
-	return charges, usable, soulbound
+	return charges or 1, usable, soulbound
 end
 
 function broom:ADDON_LOADED()
@@ -172,7 +171,7 @@ function broom:UPDATE()
 		local incomplete
 
 		for _, target in self.targets do
-			if self:count(target.bag, target.slot, target.link) < target.count then
+			if self:count(target.bag, target.slot, target.link, target.charges) < target.count then
 				local candidates = {}
 
 				for _, bagGroup in self.bagGroups do
@@ -183,11 +182,11 @@ function broom:UPDATE()
 							local charges = self:tooltipInfo(bag, slot)
 							local srcTarget = self.targets[bag..':'..slot]
 
-							local canMoveSrc = not (srcTarget and link == srcTarget.link and charges == srcTarget.charges and self:count(bag, slot, link) <= srcTarget.count)
+							local canMoveSrc = not (srcTarget and link == srcTarget.link and charges == srcTarget.charges and self:count(bag, slot, link, charges) <= srcTarget.count)
 							local canMoveToDst = target ~= srcTarget and link == target.link and charges == target.charges
 							if canMoveSrc and canMoveToDst then
 								tinsert(candidates, {
-									key = abs(self:count(bag, slot) - target.count + self:count(target.bag, target.slot, link)),
+									key = abs(self:count(bag, slot) - target.count + self:count(target.bag, target.slot, link, charges)),
 									bag = bag,
 									slot = slot,
 								})
@@ -250,7 +249,7 @@ function broom:determineTargets()
 					local _, _, itemID = strfind(link, 'item:(%d+)')
 					itemID = tonumber(itemID)
 					
-					local itemName, itemLink, itemRarity, itemMinLevel, itemClass, itemSubclass, itemStack, itemEquipLoc = GetItemInfo(itemID)
+					local itemName, _, itemRarity, itemMinLevel, itemClass, itemSubclass, itemStack, itemEquipLoc = GetItemInfo(itemID)
 					local _, count = GetContainerItemInfo(bag, slot)
 					
 					local charges, usable, soulbound = self:tooltipInfo(bag, slot)
@@ -312,7 +311,7 @@ function broom:determineTargets()
 					tinsert(key, itemName)
 					tinsert(key, 1/charges)
 
-					itemMap[itemLink..'#'..charges] = itemMap[itemLink..'#'..charges] or {
+					itemMap[link..'#'..charges] = itemMap[link..'#'..charges] or {
 						key = key,
 						bag = bag,
 						slot = slot,
@@ -321,7 +320,7 @@ function broom:determineTargets()
 						charges = charges,
 						count = 0,
 					}
-					itemMap[itemLink..'#'..charges].count = itemMap[itemLink..'#'..charges].count + count
+					itemMap[link..'#'..charges].count = itemMap[link..'#'..charges].count + count
 				end
 
 			end
