@@ -216,9 +216,7 @@ function broom:UPDATE()
 							for dstSlot=1,GetContainerNumSlots(dstBag) do
 
 								if (srcBag ~= dstBag or srcSlot ~= dstSlot) and GetContainerItemLink(srcBag, srcSlot) == GetContainerItemLink(dstBag, dstSlot) and self:partialStack(srcBag, srcSlot) and self:partialStack(dstBag, dstSlot) then
-									if self:move(srcBag, srcSlot, dstBag, dstSlot) then
-										incomplete = true
-									end
+									self:move(srcBag, srcSlot, dstBag, dstSlot)
 								end
 
 							end
