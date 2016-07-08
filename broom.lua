@@ -1,9 +1,9 @@
 local broom = CreateFrame('Frame')
-broom:SetScript('OnEvent', function()
-	this[event](this)
-end)
 broom:SetScript('OnUpdate', function()
 	this:UPDATE()
+end)
+broom:SetScript('OnEvent', function()
+	this[event](this)
 end)
 broom:RegisterEvent('ADDON_LOADED')
 
