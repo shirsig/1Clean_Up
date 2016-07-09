@@ -7,6 +7,11 @@ broom:SetScript('OnEvent', function()
 end)
 broom:RegisterEvent('ADDON_LOADED')
 
+local BANK, CONTAINER = {}, {}
+
+broom.containerBags = {0, 1, 2, 3, 4}
+broom.bankBags = {-1, 5, 6, 7, 8, 9, 10}
+
 broom.bagClasses = {
 	
 	-- ammo pouches
@@ -88,7 +93,12 @@ function broom:tooltipInfo(bag, slot)
 
 	broom_tooltip:SetOwner(self, ANCHOR_NONE)
 	broom_tooltip:ClearLines()
-	broom_tooltip:SetBagItem(bag, slot)
+
+	if bag == BANK_CONTAINER then
+		broom_tooltip:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
+	else
+		broom_tooltip:SetBagItem(bag, slot)
+	end
 
 	local charges, usable, soulbound
 	for i=1,30 do
@@ -156,9 +166,9 @@ function broom:ADDON_LOADED()
   	SLASH_BROOM1 = '/broom'
 	function SlashCmdList.BROOM(arg)
 		if arg == 'bags' then
-			self:go(4, 3, 2, 1, 0)
+			self:go(unpack(self.containerBags))
 		elseif arg == 'bank' then
-			self:go(10, 9, 8, 7, 6, 5, -1)
+			self:go(unpack(self.bankBags))
 		end
 	end
 
@@ -334,17 +344,17 @@ function broom:determineTargets()
 		
 		self.targets = {}
 
-		local bagIndex = 0
+		local bagIndex = getn(bagGroup) + 1
 		local slot = 0
 
-		for i, item in items do
+		for _, item in items do
 
 			while item.count > 0 do
 				if slot < 1 then
-					bagIndex = bagIndex + 1
+					bagIndex = bagIndex - 1
 					slot = GetContainerNumSlots(bagGroup[bagIndex])
 				end
-					
+				
 				self.targets[bagGroup[bagIndex]..':'..slot] = {
 					bag = bagGroup[bagIndex],
 					slot = slot,
@@ -380,14 +390,16 @@ function broom:determineBagGroups(...)
 			local bagName = GetBagName(bag)
 
 			local assigned = false
-			for key, bagClass in self.bagClasses do
-				for _, id in bagClass do
-					if bagName == GetItemInfo(id) then
-						tinsert(self.bagGroups[key], bag)
-						assigned = true
-						break	
-					end		
-				end	
+			if bagName then
+				for key, bagClass in self.bagClasses do
+					for _, id in bagClass do
+						if bagName == GetItemInfo(id) then
+							tinsert(self.bagGroups[key], bag)
+							assigned = true
+							break	
+						end		
+					end	
+				end
 			end
 				
 			if not assigned then
