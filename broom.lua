@@ -58,22 +58,15 @@ function broom:multiLT(xs, ys)
 	end
 end
 
-function broom:count(bag, slot, link, charges)
-	if (not link or GetContainerItemLink(bag, slot) == link) and (not charges or charges == self:tooltipInfo(bag, slot)) then
-		return ({GetContainerItemInfo(bag, slot)})[2] or 0
-	end
-	return 0
+function broom:GetModel(bag, slot)
+	return self.model[bag..':'..slot]
 end
 
-function broom:partialStack(bag, slot)
-	local _, count = GetContainerItemInfo(bag, slot)	
-	if count then
-		local _, _, itemID = strfind(GetContainerItemLink(bag, slot), 'item:(%d+)')
-		local _, _, _, _, _, _, stack = GetItemInfo(itemID)
-		if count < stack then
-			return true
-		end
+function broom:SetModel(bag, slot, model)
+	if model.count == 0 then
+		model.key = {}
 	end
+	self.model[bag..':'..slot] = model
 end
 
 function broom:move(srcBag, srcSlot, dstBag, dstSlot)
@@ -84,6 +77,24 @@ function broom:move(srcBag, srcSlot, dstBag, dstSlot)
 		ClearCursor()
        	PickupContainerItem(srcBag, srcSlot)
 		PickupContainerItem(dstBag, dstSlot)
+
+		local srcModel = self:GetModel(srcBag, srcSlot)
+		local dstModel = self:GetModel(dstBag, dstSlot)
+		if srcModel.key == dstModel.key then
+			local count = min(srcModel.count, dstModel.stack - dstModel.count)
+			srcModel.count = srcModel.count - count
+			self:SetModel(srcBag, srcSlot, srcModel)
+			dstModel.count = dstModel.count + count
+			self:SetModel(dstBag, dstSlot, dstModel)
+		else
+			srcModel.bag = dstBag
+			srcModel.slot = dstSlot
+			self:SetModel(dstBag, dstSlot, srcModel)
+			dstModel.bag = srcBag
+			dstModel.slot = srcSlot
+			self:SetModel(srcBag, srcSlot, dstModel)
+		end
+
 		return true
     end
 end
@@ -180,33 +191,25 @@ function broom:UPDATE()
 
 		local incomplete
 
-		for _, target in self.targets do
-			if self:count(target.bag, target.slot, target.link, target.charges) < target.count then
+		for targetPos, target in self.targets do
+			local targetModel = self:GetModel(target.bag, target.slot)
+			if targetModel.key ~= target.key or targetModel.count < target.count then
 				local candidates = {}
 
-				for _, bagGroup in self.bagGroups do
-					for _, bag in bagGroup do
-						for slot=1,GetContainerNumSlots(bag) do
-
-							local link = GetContainerItemLink(bag, slot)
-							local charges = self:tooltipInfo(bag, slot)
-							local srcTarget = self.targets[bag..':'..slot]
-
-							local canMoveSrc = not (srcTarget and link == srcTarget.link and charges == srcTarget.charges and self:count(bag, slot, link, charges) <= srcTarget.count)
-							local canMoveToDst = target ~= srcTarget and link == target.link and charges == target.charges
-							if canMoveSrc and canMoveToDst then
-								tinsert(candidates, {
-									key = abs(self:count(bag, slot) - target.count + self:count(target.bag, target.slot, link, charges)),
-									bag = bag,
-									slot = slot,
-								})
-							end
-
-						end
+				for srcPos, srcModel in self.model do
+					local srcTarget = self.targets[srcPos]
+					local canMoveSrc = not (srcTarget and srcModel.key == srcTarget.key and srcModel.count <= srcTarget.count)
+					local canMoveToDst = srcPos ~= targetPos and srcModel.key == target.key
+					if canMoveSrc and canMoveToDst then
+						tinsert(candidates, {
+							sortKey = abs(srcModel.count - target.count + (targetModel.key == target.key and targetModel.count or 0)),
+							bag = srcModel.bag,
+							slot = srcModel.slot,
+						})
 					end
 				end
 
-				sort(candidates, function(a, b) return a.key < b.key end)
+				sort(candidates, function(a, b) return a.sortKey < b.sortKey end)
 
 				for _, candidate in candidates do
 					incomplete = true
@@ -217,22 +220,10 @@ function broom:UPDATE()
 			end
 		end
 
-		for _, bagGroup in self.bagGroups do
-			for _, srcBag in bagGroup do
-				for srcSlot=1,GetContainerNumSlots(srcBag) do
-
-					for _, bagGroup in self.bagGroups do
-						for _, dstBag in bagGroup do
-							for dstSlot=1,GetContainerNumSlots(dstBag) do
-
-								if (srcBag ~= dstBag or srcSlot ~= dstSlot) and GetContainerItemLink(srcBag, srcSlot) == GetContainerItemLink(dstBag, dstSlot) and self:partialStack(srcBag, srcSlot) and self:partialStack(dstBag, dstSlot) then
-									self:move(srcBag, srcSlot, dstBag, dstSlot)
-								end
-
-							end
-						end
-					end
-
+		for srcPos, srcModel in self.model do
+			for dstPos, dstModel in self.model do
+				if (srcPos ~= dstPos) and srcModel.key == dstModel.key and srcModel.count < srcModel.stack and dstModel.count < dstModel.stack then
+					self:move(srcModel.bag, srcModel.slot, dstModel.bag, dstModel.slot)
 				end
 			end
 		end
@@ -240,12 +231,12 @@ function broom:UPDATE()
 		if not incomplete then
 			self.running = false
 		end
-
 	end
 end
 
-function broom:determineTargets()
+function broom:createModel()
  	
+ 	self.model = {}
 	for _, bagGroup in self.bagGroups do
 
 		local itemMap = {}
@@ -264,75 +255,88 @@ function broom:determineTargets()
 					
 					local charges, usable, soulbound = self:tooltipInfo(bag, slot)
 
-					local key = {}
+					local sortKey = {}
 					local itemClasses = { GetAuctionItemClasses() }
 
 					-- hearthstone
 					if itemID == 6948 then
-						tinsert(key, 1)
+						tinsert(sortKey, 1)
 
 					-- mounts
 					elseif self.mount[itemID] then
-						tinsert(key, 2)
+						tinsert(sortKey, 2)
 
 					-- special items
 					elseif self.special[itemID] then
-						tinsert(key, 3)
+						tinsert(sortKey, 3)
 
 					-- key items
 					elseif self.key[itemID] then
-						tinsert(key, 4)
+						tinsert(sortKey, 4)
 
 					-- tools
 					elseif self.tool[itemID] then
-						tinsert(key, 5)
+						tinsert(sortKey, 5)
 
 					-- soulbound items
 					elseif soulbound then
-						tinsert(key, 6)
+						tinsert(sortKey, 6)
 
 					-- reagents
 					elseif itemClass == itemClasses[9] then
-						tinsert(key, 7)
+						tinsert(sortKey, 7)
 
 					-- quest items
 					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
-						tinsert(key, 9)
+						tinsert(sortKey, 9)
 
 					-- consumables
 					elseif usable and itemClass ~= itemClasses[1] and itemClass ~= itemClasses[2] and itemClass ~= itemClasses[8] or itemClass == itemClasses[4] then
-						tinsert(key, 8)
+						tinsert(sortKey, 8)
 
 					-- higher quality
 					elseif itemRarity > 1 then
-						tinsert(key, 10)
+						tinsert(sortKey, 10)
 
 					-- common quality
 					elseif itemRarity == 1 then
-						tinsert(key, 11)
+						tinsert(sortKey, 11)
 
 					-- junk
 					elseif itemRarity == 0 then
-						tinsert(key, 12)
+						tinsert(sortKey, 12)
 					end
 					
-					tinsert(key, itemClass)
-					tinsert(key, itemSubclass)
-					tinsert(key, itemName)
-					tinsert(key, 1/charges)
+					tinsert(sortKey, itemClass)
+					tinsert(sortKey, itemSubclass)
+					tinsert(sortKey, itemName)
+					tinsert(sortKey, 1/charges)
 
-					itemMap[link..'#'..charges] = itemMap[link..'#'..charges] or {
+					local key = link..'#'..charges
+
+					itemMap[key] = itemMap[key] or {
+						sortKey = sortKey,
 						key = key,
-						bag = bag,
-						slot = slot,
-						link = link,
 						stack = itemStack,
-						charges = charges,
 						count = 0,
 					}
-					itemMap[link..'#'..charges].count = itemMap[link..'#'..charges].count + count
-				end
+					itemMap[key].count = itemMap[key].count + count
 
+					self.model[bag..':'..slot] = {
+						key = key,
+						stack = itemStack,
+						bag = bag,
+						slot = slot,
+						count = count,
+					}
+				else
+					self.model[bag..':'..slot] = {
+						key = {},
+						bag = bag,
+						slot = slot,
+						count = 0,
+					}
+				end
 			end
 		end
 		
@@ -340,7 +344,7 @@ function broom:determineTargets()
 		for _, item in itemMap do
 			tinsert(items, item)
 		end
-		sort(items, function(a, b) return self:multiLT(a.key, b.key) end)
+		sort(items, function(a, b) return self:multiLT(a.sortKey, b.sortKey) end)
 		
 		self.targets = {}
 
@@ -348,7 +352,6 @@ function broom:determineTargets()
 		local slot = 0
 
 		for _, item in items do
-
 			while item.count > 0 do
 				if slot < 1 then
 					bagIndex = bagIndex - 1
@@ -356,24 +359,20 @@ function broom:determineTargets()
 				end
 				
 				self.targets[bagGroup[bagIndex]..':'..slot] = {
+					key = item.key,
 					bag = bagGroup[bagIndex],
 					slot = slot,
-					link = item.link,
-					charges = item.charges,
 					count = min(item.count, item.stack),
 				}
 				item.count = item.count - min(item.count, item.stack)
 
 		        slot = slot - 1
 	        end
-	
 	    end
-	
 	end
-
 end
 
-function broom:determineBagGroups(...)
+function broom:createBagGroups(...)
 	self.bagGroups = {}
 
 	for key, bagClass in self.bagClasses do
@@ -405,13 +404,12 @@ function broom:determineBagGroups(...)
 			if not assigned then
 				tinsert(self.bagGroups['generic'], bag)
 			end
-
 		end
 	end	
 end
 
 function broom:go(...)
-	self:determineBagGroups(unpack(arg))
-	self:determineTargets()
+	self:createBagGroups(unpack(arg))
+	self:createModel()
 	self.running = true
 end
