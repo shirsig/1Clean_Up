@@ -78,21 +78,25 @@ function bagsort:move(srcBag, srcSlot, dstBag, dstSlot)
        	PickupContainerItem(srcBag, srcSlot)
 		PickupContainerItem(dstBag, dstSlot)
 
-		local srcModel = self:GetModel(srcBag, srcSlot)
-		local dstModel = self:GetModel(dstBag, dstSlot)
-		if srcModel.key == dstModel.key then
-			local count = min(srcModel.count, dstModel.stack - dstModel.count)
-			srcModel.count = srcModel.count - count
-			self:SetModel(srcBag, srcSlot, srcModel)
-			dstModel.count = dstModel.count + count
-			self:SetModel(dstBag, dstSlot, dstModel)
-		else
-			srcModel.bag = dstBag
-			srcModel.slot = dstSlot
-			self:SetModel(dstBag, dstSlot, srcModel)
-			dstModel.bag = srcBag
-			dstModel.slot = srcSlot
-			self:SetModel(srcBag, srcSlot, dstModel)
+	    local _, _, srcLocked = GetContainerItemInfo(srcBag, srcSlot)
+	    local _, _, dstLocked = GetContainerItemInfo(dstBag, dstSlot)
+    	if srcLocked or dstLocked then
+			local srcModel = self:GetModel(srcBag, srcSlot)
+			local dstModel = self:GetModel(dstBag, dstSlot)
+			if srcModel.key == dstModel.key then
+				local count = min(srcModel.count, dstModel.stack - dstModel.count)
+				srcModel.count = srcModel.count - count
+				self:SetModel(srcBag, srcSlot, srcModel)
+				dstModel.count = dstModel.count + count
+				self:SetModel(dstBag, dstSlot, dstModel)
+			else
+				srcModel.bag = dstBag
+				srcModel.slot = dstSlot
+				self:SetModel(dstBag, dstSlot, srcModel)
+				dstModel.bag = srcBag
+				dstModel.slot = srcSlot
+				self:SetModel(srcBag, srcSlot, dstModel)
+			end
 		end
 
 		return true
