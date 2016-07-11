@@ -1,18 +1,18 @@
-local broom = CreateFrame('Frame')
-broom:SetScript('OnUpdate', function()
+local bagsort = CreateFrame('Frame')
+bagsort:SetScript('OnUpdate', function()
 	this:UPDATE()
 end)
-broom:SetScript('OnEvent', function()
+bagsort:SetScript('OnEvent', function()
 	this[event](this)
 end)
-broom:RegisterEvent('ADDON_LOADED')
+bagsort:RegisterEvent('ADDON_LOADED')
 
 local BANK, CONTAINER = {}, {}
 
-broom.containerBags = {0, 1, 2, 3, 4}
-broom.bankBags = {-1, 5, 6, 7, 8, 9, 10}
+bagsort.containerBags = {0, 1, 2, 3, 4}
+bagsort.bankBags = {-1, 5, 6, 7, 8, 9, 10}
 
-broom.bagClasses = {
+bagsort.bagClasses = {
 	
 	-- ammo pouches
 	{2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320}, 
@@ -31,7 +31,7 @@ broom.bagClasses = {
 
 }
 
-function broom:set(...)
+function bagsort:set(...)
 	local set = {}
 	for i=1,arg.n do
 		set[arg[i]] = true
@@ -39,7 +39,7 @@ function broom:set(...)
 	return set
 end
 
-function broom:multiLT(xs, ys)
+function bagsort:multiLT(xs, ys)
 	local i = 1
 	while true do
 		if xs[i] and ys[i] then
@@ -58,18 +58,18 @@ function broom:multiLT(xs, ys)
 	end
 end
 
-function broom:GetModel(bag, slot)
+function bagsort:GetModel(bag, slot)
 	return self.model[bag..':'..slot]
 end
 
-function broom:SetModel(bag, slot, model)
+function bagsort:SetModel(bag, slot, model)
 	if model.count == 0 then
 		model.key = {}
 	end
 	self.model[bag..':'..slot] = model
 end
 
-function broom:move(srcBag, srcSlot, dstBag, dstSlot)
+function bagsort:move(srcBag, srcSlot, dstBag, dstSlot)
     local _, _, srcLocked = GetContainerItemInfo(srcBag, srcSlot)
     local _, _, dstLocked = GetContainerItemInfo(dstBag, dstSlot)
     
@@ -99,21 +99,21 @@ function broom:move(srcBag, srcSlot, dstBag, dstSlot)
     end
 end
 
-function broom:tooltipInfo(bag, slot)
+function bagsort:tooltipInfo(bag, slot)
 	local chargesPattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
 
-	broom_tooltip:SetOwner(self, ANCHOR_NONE)
-	broom_tooltip:ClearLines()
+	bagsort_tooltip:SetOwner(self, ANCHOR_NONE)
+	bagsort_tooltip:ClearLines()
 
 	if bag == BANK_CONTAINER then
-		broom_tooltip:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
+		bagsort_tooltip:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
 	else
-		broom_tooltip:SetBagItem(bag, slot)
+		bagsort_tooltip:SetBagItem(bag, slot)
 	end
 
 	local charges, usable, soulbound
 	for i=1,30 do
-		local leftText = getglobal('broom_tooltipTextLeft'..i):GetText() or ''
+		local leftText = getglobal('bagsort_tooltipTextLeft'..i):GetText() or ''
 
 		local _, _, chargeString = strfind(leftText, chargesPattern)
 		if chargeString then
@@ -132,8 +132,8 @@ function broom:tooltipInfo(bag, slot)
 	return charges or 1, usable, soulbound
 end
 
-function broom:ADDON_LOADED()
-	if arg1 ~= 'broom' then
+function bagsort:ADDON_LOADED()
+	if arg1 ~= 'bagsort' then
 		return
 	end
 
@@ -174,19 +174,20 @@ function broom:ADDON_LOADED()
 
 	self.tool = self:set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
 
-  	SLASH_BROOM1 = '/broom'
-	function SlashCmdList.BROOM(arg)
-		if arg == 'bags' then
-			self:go(unpack(self.containerBags))
-		elseif arg == 'bank' then
-			self:go(unpack(self.bankBags))
-		end
+  	SLASH_BAGSORT1 = '/bagsort'
+	function SlashCmdList.BAGSORT(arg)
+		self:go(unpack(self.containerBags))
 	end
 
-	CreateFrame('GameTooltip', 'broom_tooltip', nil, 'GameTooltipTemplate')
+	SLASH_BANKSORT1 = '/banksort'
+	function SlashCmdList.BANKSORT(arg)
+		self:go(unpack(self.bankBags))
+	end
+
+	CreateFrame('GameTooltip', 'bagsort_tooltip', nil, 'GameTooltipTemplate')
 end
 
-function broom:UPDATE()
+function bagsort:UPDATE()
 	if self.running then
 
 		local incomplete
@@ -234,7 +235,7 @@ function broom:UPDATE()
 	end
 end
 
-function broom:createModel()
+function bagsort:createModel()
  	
  	self.model = {}
 	for _, bagGroup in self.bagGroups do
@@ -372,7 +373,7 @@ function broom:createModel()
 	end
 end
 
-function broom:createBagGroups(...)
+function bagsort:createBagGroups(...)
 	self.bagGroups = {}
 
 	for key, bagClass in self.bagClasses do
@@ -408,7 +409,7 @@ function broom:createBagGroups(...)
 	end	
 end
 
-function broom:go(...)
+function bagsort:go(...)
 	self:createBagGroups(unpack(arg))
 	self:createModel()
 	self.running = true

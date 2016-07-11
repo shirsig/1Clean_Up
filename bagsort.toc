@@ -1,5 +1,5 @@
 ## Interface: 20300
-## Title: broom
+## Title: bagsort
 ## Author: shirsig
 
-broom.lua
+bagsort.lua
