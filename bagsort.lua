@@ -115,7 +115,7 @@ function bagsort:tooltipInfo(bag, slot)
 		bagsort_tooltip:SetBagItem(bag, slot)
 	end
 
-	local charges, usable, soulbound
+	local charges, usable, soulbound, conjured
 	for i=1,30 do
 		local leftText = getglobal('bagsort_tooltipTextLeft'..i):GetText() or ''
 
@@ -131,9 +131,13 @@ function bagsort:tooltipInfo(bag, slot)
 		if leftText == ITEM_SOULBOUND then
 			soulbound = true
 		end
+
+		if leftText == ITEM_CONJURED then
+			conjured = true
+		end
 	end
 
-	return charges or 1, usable, soulbound
+	return charges or 1, usable, soulbound, conjured
 end
 
 function bagsort:ADDON_LOADED()
@@ -258,7 +262,7 @@ function bagsort:createModel()
 					local itemName, _, itemRarity, itemMinLevel, itemClass, itemSubclass, itemStack, itemEquipLoc = GetItemInfo(itemID)
 					local _, count = GetContainerItemInfo(bag, slot)
 					
-					local charges, usable, soulbound = self:tooltipInfo(bag, slot)
+					local charges, usable, soulbound, conjured = self:tooltipInfo(bag, slot)
 
 					local sortKey = {}
 					local itemClasses = { GetAuctionItemClasses() }
@@ -282,6 +286,10 @@ function bagsort:createModel()
 					-- tools
 					elseif self.tool[itemID] then
 						tinsert(sortKey, 5)
+
+					-- conjured items
+					elseif conjured then
+						tinsert(sortKey, 13)
 
 					-- soulbound items
 					elseif soulbound then
