@@ -42,12 +42,8 @@ end
 function bagsort:multiLT(xs, ys)
 	local i = 1
 	while true do
-		if xs[i] and ys[i] then
-			if xs[i] < ys[i] then
-				return true
-			elseif xs[i] > ys[i] then
-				return false
-			end
+		if xs[i] and ys[i] and xs[i] ~= ys[i] then
+			return xs[i] < ys[i]
 		elseif not xs[i] and ys[i] then
 			return true
 		else
