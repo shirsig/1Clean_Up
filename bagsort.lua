@@ -46,7 +46,7 @@ function bagsort:multiLT(xs, ys)
 			return xs[i] < ys[i]
 		elseif not xs[i] and ys[i] then
 			return true
-		else
+		elseif not ys[i] then
 			return false
 		end
 
