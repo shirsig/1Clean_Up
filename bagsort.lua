@@ -7,6 +7,8 @@ bagsort:SetScript('OnEvent', function()
 end)
 bagsort:RegisterEvent('ADDON_LOADED')
 
+bagsort_position = {1130, 535}
+
 local BANK, CONTAINER = {}, {}
 
 bagsort.containerBags = {0, 1, 2, 3, 4}
@@ -30,6 +32,168 @@ bagsort.bagClasses = {
     {22250, 22251, 22252}, 
 
 }
+
+function bagsort:ADDON_LOADED()
+	if arg1 ~= 'bagsort' then
+		return
+	end
+
+	self:CreateMinimapButton()
+
+	self.mount = self:set(
+
+		-- rams
+		5864, 5872, 5873, 18785, 18786, 18787, 18244, 19030, 13328, 13329,
+
+		-- horses
+		2411, 2414, 5655, 5656, 18778, 18776, 18777, 18241, 12353, 12354,
+
+		-- sabers
+		8629, 8631, 8632, 18766, 18767, 18902, 18242, 13086, 19902, 12302, 12303, 8628, 12326,
+
+		-- mechanostriders
+		8563, 8595, 13321, 13322, 18772, 18773, 18774, 18243, 13326, 13327,
+
+		-- kodos
+		15277, 15290, 18793, 18794, 18795, 18247, 15292, 15293,
+
+		-- wolves
+		1132, 5665, 5668, 18796, 18797, 18798, 18245, 12330, 12351,
+
+		-- raptors
+		8588, 8591, 8592, 18788, 18789, 18790, 18246, 19872, 8586, 13317,
+
+		-- undead horses
+		13331, 13332, 13333, 13334, 18791, 18248, 13335,
+
+		-- qiraji battle tanks
+		21218, 21321, 21323, 21324, 21176
+
+	)
+
+	self.special = self:set(5462, 17696, 17117, 13347, 13289, 11511)
+
+	self.key = self:set(9240, 17191, 13544, 12324, 16309, 12384, 20402)
+
+	self.tool = self:set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
+
+  	SLASH_BAGSORT1 = '/bagsort'
+	function SlashCmdList.BAGSORT(arg)
+		self:go(unpack(self.containerBags))
+	end
+
+	SLASH_BANKSORT1 = '/banksort'
+	function SlashCmdList.BANKSORT(arg)
+		self:go(unpack(self.bankBags))
+	end
+
+	CreateFrame('GameTooltip', 'bagsort_tooltip', nil, 'GameTooltipTemplate')
+end
+
+function bagsort:UPDATE()
+	if self.running then
+
+		local incomplete
+
+		for targetPos, target in self.targets do
+			local targetModel = self:GetModel(target.bag, target.slot)
+			if targetModel.key ~= target.key or targetModel.count < target.count then
+				local candidates = {}
+
+				for srcPos, srcModel in self.model do
+					local srcTarget = self.targets[srcPos]
+					local canMoveSrc = not (srcTarget and srcModel.key == srcTarget.key and srcModel.count <= srcTarget.count)
+					local canMoveToDst = srcPos ~= targetPos and srcModel.key == target.key
+					if canMoveSrc and canMoveToDst then
+						tinsert(candidates, {
+							sortKey = abs(srcModel.count - target.count + (targetModel.key == target.key and targetModel.count or 0)),
+							bag = srcModel.bag,
+							slot = srcModel.slot,
+						})
+					end
+				end
+
+				sort(candidates, function(a, b) return a.sortKey < b.sortKey end)
+
+				for _, candidate in candidates do
+					incomplete = true
+					if self:move(candidate.bag, candidate.slot, target.bag, target.slot) then
+						break
+					end
+				end
+			end
+		end
+
+		for srcPos, srcModel in self.model do
+			for dstPos, dstModel in self.model do
+				if (srcPos ~= dstPos) and srcModel.key == dstModel.key and srcModel.count < srcModel.stack and dstModel.count < dstModel.stack then
+					self:move(srcModel.bag, srcModel.slot, dstModel.bag, dstModel.slot)
+				end
+			end
+		end
+
+		if not incomplete then
+			self.running = false
+		end
+	end
+end
+
+function bagsort:CreateMinimapButton()
+	local button = CreateFrame('Button', nil, Minimap)
+	button:SetFrameStrata('LOW')
+	button:SetScale(1.25)
+	button:SetMovable(true)
+	button:SetClampedToScreen(true)
+	button:SetToplevel(true)
+	button:SetWidth(32)
+	button:SetHeight(32)
+	button:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', unpack(bagsort_position))
+	button:SetNormalTexture([[Interface\AddOns\bagsort\INV_Pet_Broom]])
+	button:GetNormalTexture():ClearAllPoints()
+	button:GetNormalTexture():SetTexCoord(0.09, 0.91, 0.09, 0.91)
+	button:GetNormalTexture():SetPoint('CENTER', 0, 2)
+	button:GetNormalTexture():SetWidth(19)
+	button:GetNormalTexture():SetHeight(19)
+	button:SetPushedTexture([[Interface\AddOns\bagsort\INV_Pet_Broom]])
+	button:GetPushedTexture():SetTexCoord(0.06, 0.88, 0.04, 0.86)
+	button:GetPushedTexture():SetVertexColor(0.8, 0.8, 0.8)
+	button:GetPushedTexture():ClearAllPoints()
+	button:GetPushedTexture():SetPoint('CENTER', 0, 2)
+	button:GetPushedTexture():SetWidth(19)
+	button:GetPushedTexture():SetHeight(19)
+	button:SetHighlightTexture([[Interface\Minimap\UI-Minimap-ZoomButton-Highlight]])
+	button:RegisterForDrag('LeftButton')
+	button:SetScript('OnDragStart', function()
+		this:StartMoving()
+	end)
+	button:SetScript('OnDragStop', function()
+		this:StopMovingOrSizing()
+		bagsort_position = {this:GetLeft(), this:GetBottom()}
+	end)
+	button:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
+	button:SetScript('OnClick', function()
+		if arg1 == 'LeftButton' then
+			self:go(unpack(self.containerBags))
+		elseif arg1 == 'RightButton' then
+			self:go(unpack(self.bankBags))
+		end
+	end)
+	button:SetScript('OnEnter', function()
+		GameTooltip:SetOwner(this)
+		GameTooltip:AddLine('bagsort')
+		GameTooltip:AddLine('Left-click for bags', .8, .8, .8, 1)
+		GameTooltip:AddLine('Right-click for bank', .8, .8, .8, 1)
+		GameTooltip:Show()
+	end)
+	button:SetScript('OnLeave', function()
+		GameTooltip:Hide()
+	end)
+	local border = button:CreateTexture(nil, 'OVERLAY')
+	border:SetTexture([[Interface\Minimap\MiniMap-TrackingBorder]])
+	border:SetWidth(52)
+	border:SetHeight(52)
+	border:SetPoint('TOPLEFT', 0, 0)
+end
 
 function bagsort:set(...)
 	local set = {}
@@ -134,109 +298,6 @@ function bagsort:tooltipInfo(bag, slot)
 	end
 
 	return charges or 1, usable, soulbound, conjured
-end
-
-function bagsort:ADDON_LOADED()
-	if arg1 ~= 'bagsort' then
-		return
-	end
-
-	self.mount = self:set(
-
-		-- rams
-		5864, 5872, 5873, 18785, 18786, 18787, 18244, 19030, 13328, 13329,
-
-		-- horses
-		2411, 2414, 5655, 5656, 18778, 18776, 18777, 18241, 12353, 12354,
-
-		-- sabers
-		8629, 8631, 8632, 18766, 18767, 18902, 18242, 13086, 19902, 12302, 12303, 8628, 12326,
-
-		-- mechanostriders
-		8563, 8595, 13321, 13322, 18772, 18773, 18774, 18243, 13326, 13327,
-
-		-- kodos
-		15277, 15290, 18793, 18794, 18795, 18247, 15292, 15293,
-
-		-- wolves
-		1132, 5665, 5668, 18796, 18797, 18798, 18245, 12330, 12351,
-
-		-- raptors
-		8588, 8591, 8592, 18788, 18789, 18790, 18246, 19872, 8586, 13317,
-
-		-- undead horses
-		13331, 13332, 13333, 13334, 18791, 18248, 13335,
-
-		-- qiraji battle tanks
-		21218, 21321, 21323, 21324, 21176
-
-	)
-
-	self.special = self:set(5462, 17696, 17117, 13347, 13289, 11511)
-
-	self.key = self:set(9240, 17191, 13544, 12324, 16309, 12384, 20402)
-
-	self.tool = self:set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
-
-  	SLASH_BAGSORT1 = '/bagsort'
-	function SlashCmdList.BAGSORT(arg)
-		self:go(unpack(self.containerBags))
-	end
-
-	SLASH_BANKSORT1 = '/banksort'
-	function SlashCmdList.BANKSORT(arg)
-		self:go(unpack(self.bankBags))
-	end
-
-	CreateFrame('GameTooltip', 'bagsort_tooltip', nil, 'GameTooltipTemplate')
-end
-
-function bagsort:UPDATE()
-	if self.running then
-
-		local incomplete
-
-		for targetPos, target in self.targets do
-			local targetModel = self:GetModel(target.bag, target.slot)
-			if targetModel.key ~= target.key or targetModel.count < target.count then
-				local candidates = {}
-
-				for srcPos, srcModel in self.model do
-					local srcTarget = self.targets[srcPos]
-					local canMoveSrc = not (srcTarget and srcModel.key == srcTarget.key and srcModel.count <= srcTarget.count)
-					local canMoveToDst = srcPos ~= targetPos and srcModel.key == target.key
-					if canMoveSrc and canMoveToDst then
-						tinsert(candidates, {
-							sortKey = abs(srcModel.count - target.count + (targetModel.key == target.key and targetModel.count or 0)),
-							bag = srcModel.bag,
-							slot = srcModel.slot,
-						})
-					end
-				end
-
-				sort(candidates, function(a, b) return a.sortKey < b.sortKey end)
-
-				for _, candidate in candidates do
-					incomplete = true
-					if self:move(candidate.bag, candidate.slot, target.bag, target.slot) then
-						break
-					end
-				end
-			end
-		end
-
-		for srcPos, srcModel in self.model do
-			for dstPos, dstModel in self.model do
-				if (srcPos ~= dstPos) and srcModel.key == dstModel.key and srcModel.count < srcModel.stack and dstModel.count < dstModel.stack then
-					self:move(srcModel.bag, srcModel.slot, dstModel.bag, dstModel.slot)
-				end
-			end
-		end
-
-		if not incomplete then
-			self.running = false
-		end
-	end
 end
 
 function bagsort:createModel()
