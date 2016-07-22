@@ -1,6 +1,0 @@
-## Interface: 11200
-## Title: bagsort
-## Author: shirsig
-## SavedVariables: bagsort_position
-
-bagsort.lua
