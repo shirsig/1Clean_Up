@@ -7,7 +7,7 @@ Clean_Up:SetScript('OnEvent', function()
 end)
 Clean_Up:RegisterEvent('ADDON_LOADED')
 
-Clean_Up_Position = {1133, 533}
+Clean_Up_Position = {1089, 511}
 
 Clean_Up.BAGS = {0, 1, 2, 3, 4}
 Clean_Up.BANK = {-1, 5, 6, 7, 8, 9, 10}
