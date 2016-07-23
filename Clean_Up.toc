@@ -1,5 +1,5 @@
 ## Interface: 11200
 ## Title: Clean Up
 ## Author: shirsig
-## SavedVariables: cleanup_position
-cleanup.lua
+## SavedVariables: Clean_Up_Position
+Clean_Up.lua
