@@ -31,6 +31,35 @@ cleanup.CONTAINER_CLASSES = {
 
 }
 
+cleanup.ITEM_CLASSES = { GetAuctionItemClasses() }
+
+function cleanup:ItemClassKey(itemClass)
+	for i, class in self.ITEM_CLASSES do
+		if itemClass == class then
+			return i
+		end
+	end
+	return 0
+end
+
+function cleanup:ItemSubClassKey(itemClass, itemSubClass)
+	for i, SubClass in { GetAuctionItemSubClasses(self:ItemClassKey(itemClass)) } do
+		if itemSubClass == SubClass then
+			return i
+		end
+	end
+	return 0
+end
+
+function cleanup:ItemSlotKey(itemClass, itemSubClass, itemSlot)
+	for i, slot in { GetAuctionInvTypes(self:ItemClassKey(itemClass), self:ItemSubClassKey(itemSubClass)) } do
+		if itemSlot == slot then
+			return i
+		end
+	end
+	return 0
+end
+
 function cleanup:ADDON_LOADED()
 	if arg1 ~= 'cleanup' then
 		return
@@ -38,7 +67,7 @@ function cleanup:ADDON_LOADED()
 
 	self:CreateMinimapButton()
 
-	self.mount = self:set(
+	self.MOUNT = self:Set(
 
 		-- rams
 		5864, 5872, 5873, 18785, 18786, 18787, 18244, 19030, 13328, 13329,
@@ -69,20 +98,20 @@ function cleanup:ADDON_LOADED()
 
 	)
 
-	self.special = self:set(5462, 17696, 17117, 13347, 13289, 11511)
+	self.SPECIAL = self:Set(5462, 17696, 17117, 13347, 13289, 11511)
 
-	self.key = self:set(9240, 17191, 13544, 12324, 16309, 12384, 20402)
+	self.KEY = self:Set(9240, 17191, 13544, 12324, 16309, 12384, 20402)
 
-	self.tool = self:set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
+	self.TOOL = self:Set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
 
   	SLASH_CLEANUPBAGS1 = '/cleanupbags'
 	function SlashCmdList.CLEANUPBAGS(arg)
-		self:go(unpack(self.BAGS))
+		self:Go(unpack(self.BAGS))
 	end
 
 	SLASH_CLEANUPBANK1 = '/cleanupbank'
 	function SlashCmdList.CLEANUPBANK(arg)
-		self:go(unpack(self.BANK))
+		self:Go(unpack(self.BANK))
 	end
 
 	CreateFrame('GameTooltip', 'cleanup_tooltip', nil, 'GameTooltipTemplate')
@@ -115,7 +144,7 @@ function cleanup:UPDATE()
 
 				for _, candidate in candidates do
 					incomplete = true
-					if self:move(candidate.bag, candidate.slot, target.bag, target.slot) then
+					if self:Move(candidate.bag, candidate.slot, target.bag, target.slot) then
 						break
 					end
 				end
@@ -125,7 +154,7 @@ function cleanup:UPDATE()
 		for srcPos, srcModel in self.model do
 			for dstPos, dstModel in self.model do
 				if (srcPos ~= dstPos) and srcModel.key == dstModel.key and srcModel.count < srcModel.stack and dstModel.count < dstModel.stack then
-					self:move(srcModel.bag, srcModel.slot, dstModel.bag, dstModel.slot)
+					self:Move(srcModel.bag, srcModel.slot, dstModel.bag, dstModel.slot)
 				end
 			end
 		end
@@ -173,9 +202,9 @@ function cleanup:CreateMinimapButton()
 	button:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
 	button:SetScript('OnClick', function()
 		if arg1 == 'LeftButton' then
-			self:go(unpack(self.BAGS))
+			self:Go(unpack(self.BAGS))
 		elseif arg1 == 'RightButton' then
-			self:go(unpack(self.BANK))
+			self:Go(unpack(self.BANK))
 		end
 	end)
 	button:SetScript('OnEnter', function()
@@ -195,7 +224,7 @@ function cleanup:CreateMinimapButton()
 	border:SetPoint('TOPLEFT', 0, 0)
 end
 
-function cleanup:set(...)
+function cleanup:Set(...)
 	local set = {}
 	for i=1,arg.n do
 		set[arg[i]] = true
@@ -203,7 +232,7 @@ function cleanup:set(...)
 	return set
 end
 
-function cleanup:multiLT(xs, ys)
+function cleanup:MultiLT(xs, ys)
 	local i = 1
 	while true do
 		if xs[i] and ys[i] and xs[i] ~= ys[i] then
@@ -229,7 +258,7 @@ function cleanup:SetModel(bag, slot, model)
 	self.model[bag..':'..slot] = model
 end
 
-function cleanup:move(srcBag, srcSlot, dstBag, dstSlot)
+function cleanup:Move(srcBag, srcSlot, dstBag, dstSlot)
     local _, _, srcLocked = GetContainerItemInfo(srcBag, srcSlot)
     local _, _, dstLocked = GetContainerItemInfo(dstBag, dstSlot)
     
@@ -263,7 +292,7 @@ function cleanup:move(srcBag, srcSlot, dstBag, dstSlot)
     end
 end
 
-function cleanup:tooltipInfo(bag, slot)
+function cleanup:TooltipInfo(bag, slot)
 	local chargesPattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
 
 	cleanup_tooltip:SetOwner(self, ANCHOR_NONE)
@@ -300,7 +329,7 @@ function cleanup:tooltipInfo(bag, slot)
 	return charges or 1, usable, soulbound, conjured
 end
 
-function cleanup:createModel()
+function cleanup:CreateModel()
  	
  	self.model = {}
 	for _, bagGroup in self.bagGroups do
@@ -316,32 +345,31 @@ function cleanup:createModel()
 					local _, _, itemID = strfind(link, 'item:(%d+)')
 					itemID = tonumber(itemID)
 					
-					local itemName, _, itemRarity, itemMinLevel, itemClass, itemSubclass, itemStack, itemEquipLoc = GetItemInfo(itemID)
+					local itemName, _, itemRarity, itemMinLevel, itemClass, itemSubClass, itemStack, itemEquipLoc = GetItemInfo(itemID)
 					local _, count = GetContainerItemInfo(bag, slot)
 					
-					local charges, usable, soulbound, conjured = self:tooltipInfo(bag, slot)
+					local charges, usable, soulbound, conjured = self:TooltipInfo(bag, slot)
 
 					local sortKey = {}
-					local itemClasses = { GetAuctionItemClasses() }
 
 					-- hearthstone
 					if itemID == 6948 then
 						tinsert(sortKey, 1)
 
 					-- mounts
-					elseif self.mount[itemID] then
+					elseif self.MOUNT[itemID] then
 						tinsert(sortKey, 2)
 
 					-- special items
-					elseif self.special[itemID] then
+					elseif self.SPECIAL[itemID] then
 						tinsert(sortKey, 3)
 
 					-- key items
-					elseif self.key[itemID] then
+					elseif self.KEY[itemID] then
 						tinsert(sortKey, 4)
 
 					-- tools
-					elseif self.tool[itemID] then
+					elseif self.TOOL[itemID] then
 						tinsert(sortKey, 5)
 
 					-- conjured items
@@ -353,7 +381,7 @@ function cleanup:createModel()
 						tinsert(sortKey, 6)
 
 					-- reagents
-					elseif itemClass == itemClasses[9] then
+					elseif itemClass == self.ITEM_CLASSES[9] then
 						tinsert(sortKey, 7)
 
 					-- quest items
@@ -361,7 +389,7 @@ function cleanup:createModel()
 						tinsert(sortKey, 9)
 
 					-- consumables
-					elseif usable and itemClass ~= itemClasses[1] and itemClass ~= itemClasses[2] and itemClass ~= itemClasses[8] or itemClass == itemClasses[4] then
+					elseif usable and itemClass ~= self.ITEM_CLASSES[1] and itemClass ~= self.ITEM_CLASSES[2] and itemClass ~= self.ITEM_CLASSES[8] or itemClass == self.ITEM_CLASSES[4] then
 						tinsert(sortKey, 8)
 
 					-- higher quality
@@ -377,8 +405,9 @@ function cleanup:createModel()
 						tinsert(sortKey, 12)
 					end
 					
-					tinsert(sortKey, itemClass)
-					tinsert(sortKey, itemSubclass)
+					tinsert(sortKey, self:ItemClassKey(itemClass))
+					tinsert(sortKey, self:ItemSlotKey(itemClass, itemSubClass, itemEquipLoc))
+					tinsert(sortKey, self:ItemSubClassKey(itemClass, itemSubClass))
 					tinsert(sortKey, itemName)
 					tinsert(sortKey, 1/charges)
 
@@ -414,7 +443,7 @@ function cleanup:createModel()
 		for _, item in itemMap do
 			tinsert(items, item)
 		end
-		sort(items, function(a, b) return self:multiLT(a.sortKey, b.sortKey) end)
+		sort(items, function(a, b) return self:MultiLT(a.sortKey, b.sortKey) end)
 		
 		self.targets = {}
 
@@ -442,7 +471,7 @@ function cleanup:createModel()
 	end
 end
 
-function cleanup:createBagGroups(...)
+function cleanup:CreateBagGroups(...)
 	self.bagGroups = {}
 
 	for key, containerClass in self.CONTAINER_CLASSES do
@@ -478,8 +507,8 @@ function cleanup:createBagGroups(...)
 	end	
 end
 
-function cleanup:go(...)
-	self:createBagGroups(unpack(arg))
-	self:createModel()
+function cleanup:Go(...)
+	self:CreateBagGroups(unpack(arg))
+	self:CreateModel()
 	self.running = true
 end
