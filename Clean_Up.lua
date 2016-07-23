@@ -1,18 +1,18 @@
-local cleanup = CreateFrame('Frame')
-cleanup:SetScript('OnUpdate', function()
+local Clean_Up = CreateFrame('Frame')
+Clean_Up:SetScript('OnUpdate', function()
 	this:UPDATE()
 end)
-cleanup:SetScript('OnEvent', function()
+Clean_Up:SetScript('OnEvent', function()
 	this[event](this)
 end)
-cleanup:RegisterEvent('ADDON_LOADED')
+Clean_Up:RegisterEvent('ADDON_LOADED')
 
-cleanup_position = {1133, 533}
+Clean_Up_Position = {1133, 533}
 
-cleanup.BAGS = {0, 1, 2, 3, 4}
-cleanup.BANK = {-1, 5, 6, 7, 8, 9, 10}
+Clean_Up.BAGS = {0, 1, 2, 3, 4}
+Clean_Up.BANK = {-1, 5, 6, 7, 8, 9, 10}
 
-cleanup.CONTAINER_CLASSES = {
+Clean_Up.CONTAINER_CLASSES = {
 	
 	-- ammo pouches
 	{2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320}, 
@@ -31,9 +31,9 @@ cleanup.CONTAINER_CLASSES = {
 
 }
 
-cleanup.ITEM_CLASSES = { GetAuctionItemClasses() }
+Clean_Up.ITEM_CLASSES = { GetAuctionItemClasses() }
 
-function cleanup:ItemClassKey(itemClass)
+function Clean_Up:ItemClassKey(itemClass)
 	for i, class in self.ITEM_CLASSES do
 		if itemClass == class then
 			return i
@@ -42,7 +42,7 @@ function cleanup:ItemClassKey(itemClass)
 	return 0
 end
 
-function cleanup:ItemSubClassKey(itemClass, itemSubClass)
+function Clean_Up:ItemSubClassKey(itemClass, itemSubClass)
 	for i, SubClass in { GetAuctionItemSubClasses(self:ItemClassKey(itemClass)) } do
 		if itemSubClass == SubClass then
 			return i
@@ -51,7 +51,7 @@ function cleanup:ItemSubClassKey(itemClass, itemSubClass)
 	return 0
 end
 
-function cleanup:ItemSlotKey(itemClass, itemSubClass, itemSlot)
+function Clean_Up:ItemSlotKey(itemClass, itemSubClass, itemSlot)
 	for i, slot in { GetAuctionInvTypes(self:ItemClassKey(itemClass), self:ItemSubClassKey(itemSubClass)) } do
 		if itemSlot == slot then
 			return i
@@ -60,8 +60,8 @@ function cleanup:ItemSlotKey(itemClass, itemSubClass, itemSlot)
 	return 0
 end
 
-function cleanup:ADDON_LOADED()
-	if arg1 ~= 'cleanup' then
+function Clean_Up:ADDON_LOADED()
+	if arg1 ~= 'Clean_Up' then
 		return
 	end
 
@@ -114,10 +114,10 @@ function cleanup:ADDON_LOADED()
 		self:Go(unpack(self.BANK))
 	end
 
-	CreateFrame('GameTooltip', 'cleanup_tooltip', nil, 'GameTooltipTemplate')
+	CreateFrame('GameTooltip', 'Clean_Up_Tooltip', nil, 'GameTooltipTemplate')
 end
 
-function cleanup:UPDATE()
+function Clean_Up:UPDATE()
 	if self.running then
 
 		local incomplete
@@ -165,7 +165,7 @@ function cleanup:UPDATE()
 	end
 end
 
-function cleanup:CreateMinimapButton()
+function Clean_Up:CreateMinimapButton()
 	local button = CreateFrame('Button', nil, Minimap)
 	button:SetFrameStrata('LOW')
 	button:SetScale(1.3)
@@ -174,16 +174,16 @@ function cleanup:CreateMinimapButton()
 	button:SetToplevel(true)
 	button:SetWidth(32)
 	button:SetHeight(32)
-	button:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', unpack(cleanup_position))
+	button:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', unpack(Clean_Up_Position))
 	button:SetNormalTexture(button:CreateTexture())
-	SetPortraitToTexture(button:GetNormalTexture(), [[Interface\AddOns\cleanup\INV_Pet_Broom]])
+	SetPortraitToTexture(button:GetNormalTexture(), [[Interface\AddOns\Clean_Up\INV_Pet_Broom]])
 	button:GetNormalTexture():ClearAllPoints()
 	button:GetNormalTexture():SetTexCoord(0, 1, 0.06, 1.06)
 	button:GetNormalTexture():SetPoint('CENTER', 0, 1)
 	button:GetNormalTexture():SetWidth(21)
 	button:GetNormalTexture():SetHeight(21)
 	button:SetPushedTexture(button:CreateTexture())
-	SetPortraitToTexture(button:GetPushedTexture(), [[Interface\AddOns\cleanup\INV_Pet_Broom]])
+	SetPortraitToTexture(button:GetPushedTexture(), [[Interface\AddOns\Clean_Up\INV_Pet_Broom]])
 	button:GetPushedTexture():SetTexCoord(-0.03, 0.97, 0.01, 1.01)
 	button:GetPushedTexture():SetVertexColor(0.8, 0.8, 0.8)
 	button:GetPushedTexture():ClearAllPoints()
@@ -197,7 +197,7 @@ function cleanup:CreateMinimapButton()
 	end)
 	button:SetScript('OnDragStop', function()
 		this:StopMovingOrSizing()
-		cleanup_position = {this:GetLeft(), this:GetBottom()}
+		Clean_Up_Position = {this:GetLeft(), this:GetBottom()}
 	end)
 	button:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
 	button:SetScript('OnClick', function()
@@ -224,7 +224,7 @@ function cleanup:CreateMinimapButton()
 	border:SetPoint('TOPLEFT', 0, 0)
 end
 
-function cleanup:Set(...)
+function Clean_Up:Set(...)
 	local set = {}
 	for i=1,arg.n do
 		set[arg[i]] = true
@@ -232,7 +232,7 @@ function cleanup:Set(...)
 	return set
 end
 
-function cleanup:MultiLT(xs, ys)
+function Clean_Up:MultiLT(xs, ys)
 	local i = 1
 	while true do
 		if xs[i] and ys[i] and xs[i] ~= ys[i] then
@@ -247,18 +247,18 @@ function cleanup:MultiLT(xs, ys)
 	end
 end
 
-function cleanup:GetModel(bag, slot)
+function Clean_Up:GetModel(bag, slot)
 	return self.model[bag..':'..slot]
 end
 
-function cleanup:SetModel(bag, slot, model)
+function Clean_Up:SetModel(bag, slot, model)
 	if model.count == 0 then
 		model.key = {}
 	end
 	self.model[bag..':'..slot] = model
 end
 
-function cleanup:Move(srcBag, srcSlot, dstBag, dstSlot)
+function Clean_Up:Move(srcBag, srcSlot, dstBag, dstSlot)
     local _, _, srcLocked = GetContainerItemInfo(srcBag, srcSlot)
     local _, _, dstLocked = GetContainerItemInfo(dstBag, dstSlot)
     
@@ -292,21 +292,21 @@ function cleanup:Move(srcBag, srcSlot, dstBag, dstSlot)
     end
 end
 
-function cleanup:TooltipInfo(bag, slot)
+function Clean_Up:TooltipInfo(bag, slot)
 	local chargesPattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
 
-	cleanup_tooltip:SetOwner(self, ANCHOR_NONE)
-	cleanup_tooltip:ClearLines()
+	Clean_Up_Tooltip:SetOwner(self, ANCHOR_NONE)
+	Clean_Up_Tooltip:ClearLines()
 
 	if bag == BANK_CONTAINER then
-		cleanup_tooltip:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
+		Clean_Up_Tooltip:SetInventoryItem('player', BankButtonIDToInvSlotID(slot))
 	else
-		cleanup_tooltip:SetBagItem(bag, slot)
+		Clean_Up_Tooltip:SetBagItem(bag, slot)
 	end
 
 	local charges, usable, soulbound, conjured
 	for i=1,30 do
-		local leftText = getglobal('cleanup_tooltipTextLeft'..i):GetText() or ''
+		local leftText = getglobal('Clean_Up_TooltipTextLeft'..i):GetText() or ''
 
 		local _, _, chargeString = strfind(leftText, chargesPattern)
 		if chargeString then
@@ -329,7 +329,7 @@ function cleanup:TooltipInfo(bag, slot)
 	return charges or 1, usable, soulbound, conjured
 end
 
-function cleanup:CreateModel()
+function Clean_Up:CreateModel()
  	
  	self.model = {}
 	for _, bagGroup in self.bagGroups do
@@ -471,7 +471,7 @@ function cleanup:CreateModel()
 	end
 end
 
-function cleanup:CreateBagGroups(...)
+function Clean_Up:CreateBagGroups(...)
 	self.bagGroups = {}
 
 	for key, containerClass in self.CONTAINER_CLASSES do
@@ -507,7 +507,7 @@ function cleanup:CreateBagGroups(...)
 	end	
 end
 
-function cleanup:Go(...)
+function Clean_Up:Go(...)
 	self:CreateBagGroups(unpack(arg))
 	self:CreateModel()
 	self.running = true
