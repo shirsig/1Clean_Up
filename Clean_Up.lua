@@ -7,7 +7,7 @@ Clean_Up:SetScript('OnEvent', function()
 end)
 Clean_Up:RegisterEvent('ADDON_LOADED')
 
-Clean_Up_Position = {1089, 511}
+Clean_Up_Position = nil
 
 Clean_Up.BAGS = {0, 1, 2, 3, 4}
 Clean_Up.BANK = {-1, 5, 6, 7, 8, 9, 10}
@@ -167,6 +167,12 @@ end
 
 function Clean_Up:CreateMinimapButton()
 	local button = CreateFrame('Button', nil, Minimap)
+	if Clean_Up_Position then
+		button:SetPoint('CENTER', UIParent, 'BOTTOMLEFT', unpack(Clean_Up_Position))
+	else
+		button:SetPoint('CENTER', 0, 0)
+		Clean_Up_Position = {button:GetCenter()}
+	end
 	button:SetFrameStrata('LOW')
 	button:SetScale(1.3)
 	button:SetMovable(true)
@@ -174,7 +180,6 @@ function Clean_Up:CreateMinimapButton()
 	button:SetToplevel(true)
 	button:SetWidth(32)
 	button:SetHeight(32)
-	button:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', unpack(Clean_Up_Position))
 	button:SetNormalTexture(button:CreateTexture())
 	SetPortraitToTexture(button:GetNormalTexture(), [[Interface\AddOns\Clean_Up\INV_Pet_Broom]])
 	button:GetNormalTexture():ClearAllPoints()
@@ -197,7 +202,7 @@ function Clean_Up:CreateMinimapButton()
 	end)
 	button:SetScript('OnDragStop', function()
 		this:StopMovingOrSizing()
-		Clean_Up_Position = {this:GetLeft(), this:GetBottom()}
+		Clean_Up_Position = {this:GetCenter()}
 	end)
 	button:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
 	button:SetScript('OnClick', function()
