@@ -65,6 +65,9 @@ function Clean_Up:ADDON_LOADED()
 		return
 	end
 
+	self:RegisterEvent('MERCHANT_SHOW')
+	self:RegisterEvent('MERCHANT_CLOSED')
+
 	self:CreateMinimapButton()
 
 	self.MOUNT = self:Set(
@@ -106,20 +109,28 @@ function Clean_Up:ADDON_LOADED()
 
   	SLASH_CLEANUPBAGS1 = '/cleanupbags'
 	function SlashCmdList.CLEANUPBAGS(arg)
-		self:Go(unpack(self.BAGS))
+		self:Go(self.BAGS)
 	end
 
 	SLASH_CLEANUPBANK1 = '/cleanupbank'
 	function SlashCmdList.CLEANUPBANK(arg)
-		self:Go(unpack(self.BANK))
+		self:Go(self.BANK)
 	end
 
 	CreateFrame('GameTooltip', 'Clean_Up_Tooltip', nil, 'GameTooltipTemplate')
 end
 
 function Clean_Up:UPDATE()
-	if self.running then
+	if self.state == 'sell' then
+		if self:SellTrash() then
+			return
+		end
 
+		self:CreateModel()
+		self.state = 'stack&sort'
+	end
+
+	if self.state == 'stack&sort' then
 		local incomplete
 
 		for targetPos, target in self.targets do
@@ -160,9 +171,17 @@ function Clean_Up:UPDATE()
 		end
 
 		if not incomplete then
-			self.running = false
+			self.state = nil
 		end
 	end
+end
+
+function Clean_Up:MERCHANT_SHOW()
+	self.atMerchant = true
+end
+
+function Clean_Up:MERCHANT_CLOSED()
+	self.atMerchant = false
 end
 
 function Clean_Up:CreateMinimapButton()
@@ -207,9 +226,9 @@ function Clean_Up:CreateMinimapButton()
 	button:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
 	button:SetScript('OnClick', function()
 		if arg1 == 'LeftButton' then
-			self:Go(unpack(self.BAGS))
+			self:Go(self.BAGS)
 		elseif arg1 == 'RightButton' then
-			self:Go(unpack(self.BANK))
+			self:Go(self.BANK)
 		end
 	end)
 	button:SetScript('OnEnter', function()
@@ -476,7 +495,7 @@ function Clean_Up:CreateModel()
 	end
 end
 
-function Clean_Up:CreateBagGroups(...)
+function Clean_Up:CreateBagGroups(containers)
 	self.bagGroups = {}
 
 	for key, containerClass in self.CONTAINER_CLASSES do
@@ -484,12 +503,8 @@ function Clean_Up:CreateBagGroups(...)
 	end
 	self.bagGroups['generic'] = {}
 
-	for i=1,arg.n do
-	
-		local bag = arg[i]
-
+	for _, bag in ipairs(containers) do
 		if GetContainerNumSlots(bag) > 0 then
-
 			local bagName = GetBagName(bag)
 
 			local assigned = false
@@ -509,11 +524,33 @@ function Clean_Up:CreateBagGroups(...)
 				tinsert(self.bagGroups['generic'], bag)
 			end
 		end
-	end	
+	end
 end
 
-function Clean_Up:Go(...)
-	self:CreateBagGroups(unpack(arg))
-	self:CreateModel()
-	self.running = true
+function Clean_Up:SellTrash()
+	local found
+	if self.atMerchant then
+		for bag=0,4 do
+			for slot=1,GetContainerNumSlots(bag) do
+				for id in string.gfind(GetContainerItemLink(bag, slot) or '', 'item:(%d+)') do
+					local _, _, quality = GetItemInfo(id)
+					if quality == 0 then
+						found = true
+						UseContainerItem(bag, slot)
+					end
+				end
+			end
+		end
+	end
+	return found
+end
+
+function Clean_Up:Go(containers)
+	self:CreateBagGroups(containers)
+	if containers == self.BAGS then
+		self.state = 'sell'
+	elseif containers == self.BANK then
+		self:CreateModel()
+		self.state = 'stack&sort'
+	end
 end
