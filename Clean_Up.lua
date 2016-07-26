@@ -117,6 +117,12 @@ function Clean_Up:ADDON_LOADED()
 		self:Go(self.BANK)
 	end
 
+    SLASH_CLEANUPREVERSE1 = '/cleanupreverse'
+    function SlashCmdList.CLEANUPREVERSE(arg)
+        Clean_Up_Reversed = not Clean_Up_Reversed
+        DEFAULT_CHAT_FRAME:AddMessage('[Clean Up] Sort order: '..(Clean_Up_Reversed and 'Reversed' or 'Standard'), 1, 1, 0)
+	end
+
 	CreateFrame('GameTooltip', 'Clean_Up_Tooltip', nil, 'GameTooltipTemplate')
 end
 
@@ -471,14 +477,27 @@ function Clean_Up:CreateModel()
 		
 		self.targets = {}
 
-		local bagIndex = getn(bagGroup) + 1
-		local slot = 0
+		local bagIndex, slot
+		if Clean_Up_Reversed then
+			bagIndex = 1
+			slot = 1
+		else
+			bagIndex = getn(bagGroup) + 1
+			slot = 0
+		end
 
 		for _, item in items do
 			while item.count > 0 do
-				if slot < 1 then
-					bagIndex = bagIndex - 1
-					slot = GetContainerNumSlots(bagGroup[bagIndex])
+				if Clean_Up_Reversed then
+					if slot > GetContainerNumSlots(bagGroup[bagIndex]) then
+						bagIndex = bagIndex + 1
+						slot = 1
+					end
+				else
+					if slot < 1 then
+						bagIndex = bagIndex - 1
+						slot = GetContainerNumSlots(bagGroup[bagIndex])
+					end		
 				end
 				
 				self.targets[bagGroup[bagIndex]..':'..slot] = {
@@ -489,7 +508,7 @@ function Clean_Up:CreateModel()
 				}
 				item.count = item.count - min(item.count, item.stack)
 
-		        slot = slot - 1
+		        slot = Clean_Up_Reversed and slot + 1 or slot - 1
 	        end
 	    end
 	end
