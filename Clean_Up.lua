@@ -8,12 +8,13 @@ end)
 Clean_Up:RegisterEvent('ADDON_LOADED')
 
 Clean_Up_Position = nil
+Clean_Up_Reversed = false
+Clean_Up_Assignments = {}
 
 Clean_Up.BAGS = {0, 1, 2, 3, 4}
 Clean_Up.BANK = {-1, 5, 6, 7, 8, 9, 10}
 
 Clean_Up.CONTAINER_CLASSES = {
-	
 	-- ammo pouches
 	{2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320}, 
 	
@@ -28,7 +29,6 @@ Clean_Up.CONTAINER_CLASSES = {
 
 	-- herb bags
     {22250, 22251, 22252}, 
-
 }
 
 Clean_Up.ITEM_CLASSES = { GetAuctionItemClasses() }
@@ -68,10 +68,7 @@ function Clean_Up:ADDON_LOADED()
 	self:RegisterEvent('MERCHANT_SHOW')
 	self:RegisterEvent('MERCHANT_CLOSED')
 
-	self:CreateMinimapButton()
-
 	self.MOUNT = self:Set(
-
 		-- rams
 		5864, 5872, 5873, 18785, 18786, 18787, 18244, 19030, 13328, 13329,
 
@@ -98,7 +95,6 @@ function Clean_Up:ADDON_LOADED()
 
 		-- qiraji battle tanks
 		21218, 21321, 21323, 21324, 21176
-
 	)
 
 	self.SPECIAL = self:Set(5462, 17696, 17117, 13347, 13289, 11511)
@@ -107,21 +103,9 @@ function Clean_Up:ADDON_LOADED()
 
 	self.TOOL = self:Set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
 
-  	SLASH_CLEANUPBAGS1 = '/cleanupbags'
-	function SlashCmdList.CLEANUPBAGS(arg)
-		self:Go(self.BAGS)
-	end
-
-	SLASH_CLEANUPBANK1 = '/cleanupbank'
-	function SlashCmdList.CLEANUPBANK(arg)
-		self:Go(self.BANK)
-	end
-
-    SLASH_CLEANUPREVERSE1 = '/cleanupreverse'
-    function SlashCmdList.CLEANUPREVERSE(arg)
-        Clean_Up_Reversed = not Clean_Up_Reversed
-        DEFAULT_CHAT_FRAME:AddMessage('[Clean Up] Sort order: '..(Clean_Up_Reversed and 'Reversed' or 'Standard'), 1, 1, 0)
-	end
+	self:CreateMinimapButton()
+	self:SetupHooks()
+	self:SetupSlash()
 
 	CreateFrame('GameTooltip', 'Clean_Up_Tooltip', nil, 'GameTooltipTemplate')
 end
@@ -188,6 +172,59 @@ end
 
 function Clean_Up:MERCHANT_CLOSED()
 	self.atMerchant = false
+end
+
+function Clean_Up:InventoryIDToContainerID(id)
+end
+
+function Clean_Up:ItemKey(link, charges)
+	return link..(charges > 1 and charges or '')
+end
+
+function Clean_Up:SetupHooks()
+	local orig_PickupContainerItem = PickupContainerItem
+	function PickupContainerItem(container, slot)
+		if IsAltKeyDown() then
+			local link = GetContainerItemLink(container, slot)
+			if link then
+				local key = self:ItemKey(link, self:TooltipInfo(container, slot))
+				Clean_Up_Assignments[container..':'..slot] = key
+				self:Log(container..':'..slot..' assigned to '..key)
+			end
+		else
+			orig_PickupContainerItem(container, slot)
+		end
+	end
+
+	local orig_UseContainerItem = UseContainerItem
+	function UseContainerItem(container, slot, onSelf)
+		if IsAltKeyDown() then
+			if Clean_Up_Assignments[container..':'..slot] then
+				Clean_Up_Assignments[container..':'..slot] = nil
+				self:Log(container..':'..slot..' freed')
+			end
+		else
+			orig_UseContainerItem(container, slot, onSelf)
+		end
+	end
+end
+
+function Clean_Up:SetupSlash()
+  	SLASH_CLEANUPBAGS1 = '/cleanupbags'
+	function SlashCmdList.CLEANUPBAGS(arg)
+		self:Go(self.BAGS)
+	end
+
+	SLASH_CLEANUPBANK1 = '/cleanupbank'
+	function SlashCmdList.CLEANUPBANK(arg)
+		self:Go(self.BANK)
+	end
+
+    SLASH_CLEANUPREVERSE1 = '/cleanupreverse'
+    function SlashCmdList.CLEANUPREVERSE(arg)
+        Clean_Up_Reversed = not Clean_Up_Reversed
+        self:Log('Sort order: '..(Clean_Up_Reversed and 'Reversed' or 'Standard'))
+	end
 end
 
 function Clean_Up:CreateMinimapButton()
@@ -365,107 +402,105 @@ function Clean_Up:CreateModel()
 	for _, bagGroup in self.bagGroups do
 
 		local itemMap = {}
-		for _, bag in bagGroup do
-			for slot=1,GetContainerNumSlots(bag) do
+		for bag, slot in self:ContainerIterator(bagGroup) do
 
-				local link = GetContainerItemLink(bag, slot)
+			local link = GetContainerItemLink(bag, slot)
+			
+			if link then
+
+				local _, _, itemID = strfind(link, 'item:(%d+)')
+				itemID = tonumber(itemID)
 				
-				if link then
+				local itemName, _, itemRarity, itemMinLevel, itemClass, itemSubClass, itemStack, itemEquipLoc = GetItemInfo(itemID)
+				local _, count = GetContainerItemInfo(bag, slot)
+				
+				local charges, usable, soulbound, conjured = self:TooltipInfo(bag, slot)
 
-					local _, _, itemID = strfind(link, 'item:(%d+)')
-					itemID = tonumber(itemID)
-					
-					local itemName, _, itemRarity, itemMinLevel, itemClass, itemSubClass, itemStack, itemEquipLoc = GetItemInfo(itemID)
-					local _, count = GetContainerItemInfo(bag, slot)
-					
-					local charges, usable, soulbound, conjured = self:TooltipInfo(bag, slot)
+				local sortKey = {}
 
-					local sortKey = {}
+				-- hearthstone
+				if itemID == 6948 then
+					tinsert(sortKey, 1)
 
-					-- hearthstone
-					if itemID == 6948 then
-						tinsert(sortKey, 1)
+				-- mounts
+				elseif self.MOUNT[itemID] then
+					tinsert(sortKey, 2)
 
-					-- mounts
-					elseif self.MOUNT[itemID] then
-						tinsert(sortKey, 2)
+				-- special items
+				elseif self.SPECIAL[itemID] then
+					tinsert(sortKey, 3)
 
-					-- special items
-					elseif self.SPECIAL[itemID] then
-						tinsert(sortKey, 3)
+				-- key items
+				elseif self.KEY[itemID] then
+					tinsert(sortKey, 4)
 
-					-- key items
-					elseif self.KEY[itemID] then
-						tinsert(sortKey, 4)
+				-- tools
+				elseif self.TOOL[itemID] then
+					tinsert(sortKey, 5)
 
-					-- tools
-					elseif self.TOOL[itemID] then
-						tinsert(sortKey, 5)
+				-- conjured items
+				elseif conjured then
+					tinsert(sortKey, 13)
 
-					-- conjured items
-					elseif conjured then
-						tinsert(sortKey, 13)
+				-- soulbound items
+				elseif soulbound then
+					tinsert(sortKey, 6)
 
-					-- soulbound items
-					elseif soulbound then
-						tinsert(sortKey, 6)
+				-- reagents
+				elseif itemClass == self.ITEM_CLASSES[9] then
+					tinsert(sortKey, 7)
 
-					-- reagents
-					elseif itemClass == self.ITEM_CLASSES[9] then
-						tinsert(sortKey, 7)
+				-- quest items
+				elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
+					tinsert(sortKey, 9)
 
-					-- quest items
-					elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
-						tinsert(sortKey, 9)
+				-- consumables
+				elseif usable and itemClass ~= self.ITEM_CLASSES[1] and itemClass ~= self.ITEM_CLASSES[2] and itemClass ~= self.ITEM_CLASSES[8] or itemClass == self.ITEM_CLASSES[4] then
+					tinsert(sortKey, 8)
 
-					-- consumables
-					elseif usable and itemClass ~= self.ITEM_CLASSES[1] and itemClass ~= self.ITEM_CLASSES[2] and itemClass ~= self.ITEM_CLASSES[8] or itemClass == self.ITEM_CLASSES[4] then
-						tinsert(sortKey, 8)
+				-- higher quality
+				elseif itemRarity > 1 then
+					tinsert(sortKey, 10)
 
-					-- higher quality
-					elseif itemRarity > 1 then
-						tinsert(sortKey, 10)
+				-- common quality
+				elseif itemRarity == 1 then
+					tinsert(sortKey, 11)
 
-					-- common quality
-					elseif itemRarity == 1 then
-						tinsert(sortKey, 11)
-
-					-- junk
-					elseif itemRarity == 0 then
-						tinsert(sortKey, 12)
-					end
-					
-					tinsert(sortKey, self:ItemClassKey(itemClass))
-					tinsert(sortKey, self:ItemSlotKey(itemClass, itemSubClass, itemEquipLoc))
-					tinsert(sortKey, self:ItemSubClassKey(itemClass, itemSubClass))
-					tinsert(sortKey, itemName)
-					tinsert(sortKey, 1/charges)
-
-					local key = link..'#'..charges
-
-					itemMap[key] = itemMap[key] or {
-						sortKey = sortKey,
-						key = key,
-						stack = itemStack,
-						count = 0,
-					}
-					itemMap[key].count = itemMap[key].count + count
-
-					self.model[bag..':'..slot] = {
-						key = key,
-						stack = itemStack,
-						bag = bag,
-						slot = slot,
-						count = count,
-					}
-				else
-					self.model[bag..':'..slot] = {
-						key = {},
-						bag = bag,
-						slot = slot,
-						count = 0,
-					}
+				-- junk
+				elseif itemRarity == 0 then
+					tinsert(sortKey, 12)
 				end
+				
+				tinsert(sortKey, self:ItemClassKey(itemClass))
+				tinsert(sortKey, self:ItemSlotKey(itemClass, itemSubClass, itemEquipLoc))
+				tinsert(sortKey, self:ItemSubClassKey(itemClass, itemSubClass))
+				tinsert(sortKey, itemName)
+				tinsert(sortKey, 1/charges)
+
+				local key = self:ItemKey(link, charges)
+
+				itemMap[key] = itemMap[key] or {
+					sortKey = sortKey,
+					key = key,
+					stack = itemStack,
+					count = 0,
+				}
+				itemMap[key].count = itemMap[key].count + count
+
+				self.model[bag..':'..slot] = {
+					key = key,
+					stack = itemStack,
+					bag = bag,
+					slot = slot,
+					count = count,
+				}
+			else
+				self.model[bag..':'..slot] = {
+					key = {},
+					bag = bag,
+					slot = slot,
+					count = 0,
+				}
 			end
 		end
 		
@@ -477,41 +512,86 @@ function Clean_Up:CreateModel()
 		
 		self.targets = {}
 
-		local bagIndex, slot
-		if Clean_Up_Reversed then
-			bagIndex = 1
-			slot = 1
-		else
-			bagIndex = getn(bagGroup) + 1
-			slot = 0
+		for bag, slot in self:ContainerIterator(bagGroup, not Clean_Up_Reversed) do
+			local key = Clean_Up_Assignments[bag..':'..slot]
+			if key then
+				local item = itemMap[key]
+				if item and item.count > 0 then
+
+					self.targets[bag..':'..slot] = {
+						key = item.key,
+						bag = bag,
+						slot = slot,
+						count = min(item.count, item.stack),
+					}
+					item.count = item.count - min(item.count, item.stack)
+				end			
+			end
 		end
+
+		local positions = self:ContainerIterator(bagGroup, not Clean_Up_Reversed)
 
 		for _, item in items do
 			while item.count > 0 do
-				if Clean_Up_Reversed then
-					if slot > GetContainerNumSlots(bagGroup[bagIndex]) then
-						bagIndex = bagIndex + 1
-						slot = 1
-					end
-				else
-					if slot < 1 then
-						bagIndex = bagIndex - 1
-						slot = GetContainerNumSlots(bagGroup[bagIndex])
-					end		
-				end
+				local bag, slot = positions()
 				
-				self.targets[bagGroup[bagIndex]..':'..slot] = {
-					key = item.key,
-					bag = bagGroup[bagIndex],
-					slot = slot,
-					count = min(item.count, item.stack),
-				}
-				item.count = item.count - min(item.count, item.stack)
-
-		        slot = Clean_Up_Reversed and slot + 1 or slot - 1
+				if not self.targets[bag..':'..slot] then
+					self.targets[bag..':'..slot] = {
+						key = item.key,
+						bag = bag,
+						slot = slot,
+						count = min(item.count, item.stack),
+					}
+					item.count = item.count - min(item.count, item.stack)
+				end
 	        end
 	    end
 	end
+end
+
+function Clean_Up:ContainerIterator(containers, reversed)
+	local i, slot
+
+	local function containerStart()
+		return reversed and GetContainerNumSlots(containers[i]) or 1
+	end
+
+	local function containerFinished()
+		if reversed then
+			return slot < 1
+		else
+			return slot > GetContainerNumSlots(containers[i])
+		end
+	end
+
+	local function next(i)
+		return reversed and i - 1 or i + 1
+	end
+
+	local function nextPosition()
+		slot = next(slot)
+		if containerFinished() then
+			i = next(i)
+			slot = containers[i] and containerStart()
+		end		
+	end
+
+	i = reversed and getn(containers) or 1
+	slot = containers[i] and containerStart()
+
+	return function()
+
+		local current_container, current_slot = containers[i], slot
+
+		if current_container then
+			nextPosition()
+			return current_container, current_slot
+		end
+	end
+end
+
+function Clean_Up:Log(msg)
+	DEFAULT_CHAT_FRAME:AddMessage('[Clean Up] '..tostring(msg), 1, 1, 0)
 end
 
 function Clean_Up:CreateBagGroups(containers)
