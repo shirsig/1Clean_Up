@@ -1,13 +1,16 @@
 # Clean Up - WoW 1.12 addOn 
 
-This addon automatically stacks and sorts your items.
+This addOn automatically stacks and sorts your items.
 
 ![Alt text](http://i.imgur.com/DZgQPaa.png)
 
 ### Commands
 **/cleanupbags framename** (Changes the frame the "Clean Up Bags"-button is attached to to **framename**, requires **/reload**)<br/>
 **/cleanupbank framename** (Changes the frame the "Clean Up Bank"-button is attached to to **framename**, requires **/reload**)<br/>
-**/cleanupreverse** (Makes the sorting start at the top of your bags instead of the bottom)
+**/cleanupreverse** (Makes the sorting start at the top of your bags instead of the bottom)<br/><br/>
+The buttons can be positioned on their frames by dragging while holding down the Alt-key.<br/><br/>
+Alt-left-click on a bag item will permanently assign its slot to that item.<br/>
+Alt-right-click on a bag slot will clear its assignment.
 
 ### Sort order
 The primary sort order is:<br/>
