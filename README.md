@@ -11,15 +11,19 @@ This addOn automatically stacks and sorts your items.
 
 Configuring the buttons for OneBag:
 
-```/cleanupbags OneBagFrame
+```
+/cleanupbags OneBagFrame
 /cleanupbank OneBankFrame
-/reload```
+/reload
+```
 
 Configuring the buttons for Bagnon:
 
-```/cleanupbags Bagnon
+```
+/cleanupbags Bagnon
 /cleanupbank Banknon
-/reload```
+/reload
+```
 
 The buttons can be positioned on their frames by dragging while holding down the Alt-key.
 
@@ -27,7 +31,8 @@ Alt-left-click on a bag item will permanently assign its slot to that item.<br/>
 Alt-right-click on a bag slot will clear its assignment.
 
 ### Sort order
-The primary sort order is:<br/>
+The primary sort order is:
+
 **hearthstone**<br/>
 **mounts**<br/>
 **special items** (items of arbitrary categories that tend to be kept for a long time for some reason. e.g., cosmetic items like dartol's rod, items that give you some ability like cenarion beacon)<br/>
@@ -40,5 +45,8 @@ The primary sort order is:<br/>
 **high quality items** (which aren't in any other category)<br/>
 **common quality items** (which aren't in any other category)<br/>
 **junk**<br/>
-**conjured items**<br/><br/>
-The basic intuition for the primary sort order is the time items are expected to be kept around. The more "permanent" an item is the lower it is placed in your bags.<br/><br/>Within the primary groups items are further sorted by itemclass, itemequiploc, itemsubclass, itemname and stacksize/charges in this order of priority.
+**conjured items**
+
+The basic intuition for the primary sort order is the time items are expected to be kept around. The more "permanent" an item is the lower it is placed in your bags.
+
+Within the primary groups items are further sorted by itemclass, itemequiploc, itemsubclass, itemname and stacksize/charges in this order of priority.
