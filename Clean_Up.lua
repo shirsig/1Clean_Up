@@ -7,7 +7,8 @@ Clean_Up:SetScript('OnEvent', function()
 end)
 Clean_Up:RegisterEvent('ADDON_LOADED')
 
-Clean_Up_Position = nil
+Clean_Up_Bags = { parent='ContainerFrame1', position={0, 0} }
+Clean_Up_Bank = { parent='BankFrame', position={0, 0} }
 Clean_Up_Reversed = false
 Clean_Up_Assignments = {}
 
@@ -103,7 +104,6 @@ function Clean_Up:ADDON_LOADED()
 
 	self.TOOL = self:Set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
 
-	self:CreateMinimapButton()
 	self:SetupHooks()
 	self:SetupSlash()
 
@@ -111,6 +111,14 @@ function Clean_Up:ADDON_LOADED()
 end
 
 function Clean_Up:UPDATE()
+	if not self.bagsButton and getglobal(Clean_Up_Bags.parent) then
+		self:CreateBagsButton()
+	end
+
+	if not self.bankButton and getglobal(Clean_Up_Bank.parent) then
+		self:CreateBankButton()
+	end
+
 	if self.state == 'sell' then
 		if self:SellTrash() then
 			return
@@ -212,12 +220,14 @@ end
 function Clean_Up:SetupSlash()
   	SLASH_CLEANUPBAGS1 = '/cleanupbags'
 	function SlashCmdList.CLEANUPBAGS(arg)
-		self:Go(self.BAGS)
+		Clean_Up_Bags = { parent=arg, position={0, 0} }
+		self:Log('Bags-frame: '..arg)
 	end
 
 	SLASH_CLEANUPBANK1 = '/cleanupbank'
 	function SlashCmdList.CLEANUPBANK(arg)
-		self:Go(self.BANK)
+		Clean_Up_Bank = { parent=arg, position={0, 0} }
+		self:Log('Bank-frame: '..arg)
 	end
 
     SLASH_CLEANUPREVERSE1 = '/cleanupreverse'
@@ -227,68 +237,63 @@ function Clean_Up:SetupSlash()
 	end
 end
 
-function Clean_Up:CreateMinimapButton()
-	local button = CreateFrame('Button', nil, Minimap)
-	if Clean_Up_Position then
-		button:SetPoint('CENTER', UIParent, 'BOTTOMLEFT', unpack(Clean_Up_Position))
-	else
-		button:SetPoint('CENTER', 0, 0)
-		Clean_Up_Position = {button:GetCenter()}
-	end
-	button:SetFrameStrata('LOW')
-	button:SetScale(1.3)
+function Clean_Up:CreateBagsButton()
+	self.bagsButton = self:CreateButton('Clean Up Bags', Clean_Up_Bags, function()
+		self:Go(self.BAGS)
+	end)
+end
+
+function Clean_Up:CreateBankButton()
+	self.bankButton = self:CreateButton('Clean Up Bank', Clean_Up_Bank, function()
+		self:Go(self.BANK)
+	end)
+end
+
+function Clean_Up:CreateButton(name, db, action)
+	local button = CreateFrame('Button', nil, getglobal(db.parent))
+	button:SetFrameLevel(129)
+	button:SetPoint('CENTER', unpack(db.position))
 	button:SetMovable(true)
 	button:SetClampedToScreen(true)
 	button:SetToplevel(true)
-	button:SetWidth(32)
-	button:SetHeight(32)
-	button:SetNormalTexture(button:CreateTexture())
-	SetPortraitToTexture(button:GetNormalTexture(), [[Interface\AddOns\Clean_Up\INV_Pet_Broom]])
-	button:GetNormalTexture():ClearAllPoints()
-	button:GetNormalTexture():SetTexCoord(0, 1, 0.06, 1.06)
-	button:GetNormalTexture():SetPoint('CENTER', 0, 1)
-	button:GetNormalTexture():SetWidth(21)
-	button:GetNormalTexture():SetHeight(21)
-	button:SetPushedTexture(button:CreateTexture())
-	SetPortraitToTexture(button:GetPushedTexture(), [[Interface\AddOns\Clean_Up\INV_Pet_Broom]])
-	button:GetPushedTexture():SetTexCoord(-0.03, 0.97, 0.01, 1.01)
-	button:GetPushedTexture():SetVertexColor(0.8, 0.8, 0.8)
-	button:GetPushedTexture():ClearAllPoints()
-	button:GetPushedTexture():SetPoint('CENTER', 0, 1)
-	button:GetPushedTexture():SetWidth(21)
-	button:GetPushedTexture():SetHeight(21)
-	button:SetHighlightTexture([[Interface\Minimap\UI-Minimap-ZoomButton-Highlight]])
+	button:SetWidth(28)
+	button:SetHeight(26)
+	button:SetNormalTexture([[Interface\AddOns\Clean_Up\Bags]])
+	button:GetNormalTexture():SetTexCoord(0.12109375, 0.23046875, 0.7265625, 0.9296875)
+	button:SetPushedTexture([[Interface\AddOns\Clean_Up\Bags]])
+	button:GetPushedTexture():SetTexCoord(0.00390625, 0.11328125, 0.7265625, 0.9296875)
+	button:SetHighlightTexture([[Interface\Buttons\ButtonHilight-Square]])
+	button:GetHighlightTexture():ClearAllPoints()
+	button:GetHighlightTexture():SetWidth(24)
+	button:GetHighlightTexture():SetHeight(23)
+	button:GetHighlightTexture():SetPoint('CENTER', 0, 0)
 	button:RegisterForDrag('LeftButton')
 	button:SetScript('OnDragStart', function()
-		this:StartMoving()
+		if IsAltKeyDown() then
+			this:StartMoving()
+		end
 	end)
 	button:SetScript('OnDragStop', function()
 		this:StopMovingOrSizing()
-		Clean_Up_Position = {this:GetCenter()}
+		local x, y = this:GetCenter()
+		local parentX, parentY = getglobal(db.parent):GetCenter()
+		db.position = { x - parentX, y - parentY }
+		this:ClearAllPoints()
+		this:SetPoint('CENTER', unpack(db.position))
 	end)
-	button:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
 	button:SetScript('OnClick', function()
-		if arg1 == 'LeftButton' then
-			self:Go(self.BAGS)
-		elseif arg1 == 'RightButton' then
-			self:Go(self.BANK)
-		end
+		PlaySoundFile([[Interface\AddOns\Clean_Up\UI_BagSorting_01.ogg]])
+		action()
 	end)
 	button:SetScript('OnEnter', function()
 		GameTooltip:SetOwner(this)
-		GameTooltip:AddLine('Clean Up')
-		GameTooltip:AddLine(HIGHLIGHT_FONT_COLOR_CODE..'<Left Click> '..FONT_COLOR_CODE_CLOSE..'Bags')
-		GameTooltip:AddLine(HIGHLIGHT_FONT_COLOR_CODE..'<Right Click> '..FONT_COLOR_CODE_CLOSE..'Bank')
+		GameTooltip:AddLine(name)
 		GameTooltip:Show()
 	end)
 	button:SetScript('OnLeave', function()
 		GameTooltip:Hide()
 	end)
-	local border = button:CreateTexture(nil, 'OVERLAY')
-	border:SetTexture([[Interface\Minimap\MiniMap-TrackingBorder]])
-	border:SetWidth(52)
-	border:SetHeight(52)
-	border:SetPoint('TOPLEFT', 0, 0)
+	return button
 end
 
 function Clean_Up:Set(...)
