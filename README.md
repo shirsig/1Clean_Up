@@ -47,6 +47,6 @@ The primary sort order is:
 **junk**<br/>
 **conjured items**
 
-The basic intuition for the primary sort order is the time items are expected to be kept around. The more "permanent" an item is the lower it is placed in your bags.
+The basic intuition for the primary sort order is how long items are expected to be kept around. The more "permanent" an item is the lower it is placed in your bags.
 
 Within the primary groups items are further sorted by **itemclass**, **itemequiploc**, **itemsubclass**, **itemname** and **stacksize/charges** in this order of priority.
