@@ -11,15 +11,15 @@ This addOn automatically stacks and sorts your items.
 
 Configuring the buttons for OneBag:
 
-`/cleanupbags OneBagFrame
+```/cleanupbags OneBagFrame
 /cleanupbank OneBankFrame
-/reload`
+/reload```
 
 Configuring the buttons for Bagnon:
 
-`/cleanupbags Bagnon
+```/cleanupbags Bagnon
 /cleanupbank Banknon
-/reload`
+/reload```
 
 The buttons can be positioned on their frames by dragging while holding down the Alt-key.
 
