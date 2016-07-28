@@ -9,7 +9,7 @@ This addOn automatically stacks and sorts your items.
 **/cleanupbags framename** (Changes the frame the "Clean Up Bags"-button is attached to to **framename**, requires **/reload**)<br/>
 **/cleanupbank framename** (Changes the frame the "Clean Up Bank"-button is attached to to **framename**, requires **/reload**)
 
-Configuring the buttons for OneBag:
+#### Configuring the buttons for OneBag
 
 ```
 /cleanupbags OneBagFrame
@@ -17,7 +17,7 @@ Configuring the buttons for OneBag:
 /reload
 ```
 
-Configuring the buttons for Bagnon:
+#### Configuring the buttons for Bagnon
 
 ```
 /cleanupbags Bagnon
