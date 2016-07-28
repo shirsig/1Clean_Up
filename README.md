@@ -25,7 +25,7 @@ Configuring the buttons for Bagnon:
 /reload
 ```
 
-When holding down the Alt-key you can drag the buttons to position them on their frames.
+When holding down the **Alt-key** you can **drag** the buttons to position them on their frames.
 
 **Alt-left-click** on a bag item will permanently assign its slot to that item.<br/>
 **Alt-right-click** on a bag slot will clear its assignment.
