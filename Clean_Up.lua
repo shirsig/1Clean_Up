@@ -182,9 +182,6 @@ function Clean_Up:MERCHANT_CLOSED()
 	self.atMerchant = false
 end
 
-function Clean_Up:InventoryIDToContainerID(id)
-end
-
 function Clean_Up:ItemKey(link, charges)
 	return link..(charges > 1 and charges or '')
 end
