@@ -248,7 +248,6 @@ end
 
 function Clean_Up:CreateButton(name, db, action)
 	local button = CreateFrame('Button', nil, getglobal(db.parent))
-	button:SetFrameLevel(129)
 	button:SetPoint('CENTER', unpack(db.position))
 	button:SetMovable(true)
 	button:SetClampedToScreen(true)
@@ -265,6 +264,15 @@ function Clean_Up:CreateButton(name, db, action)
 	button:GetHighlightTexture():SetHeight(23)
 	button:GetHighlightTexture():SetPoint('CENTER', 0, 0)
 	button:RegisterForDrag('LeftButton')
+	button:SetScript('OnUpdate', function()
+		if IsAltKeyDown() and this:GetFrameLevel() < 129 then
+			this.frameLevel = this:GetFrameLevel()
+			this:SetFrameLevel(129)
+		elseif not IsAltKeyDown() and this.frameLevel then
+			this:SetFrameLevel(this.frameLevel)
+			this.frameLevel = nil
+		end
+	end)
 	button:SetScript('OnDragStart', function()
 		if IsAltKeyDown() then
 			this:StartMoving()
