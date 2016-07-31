@@ -4,6 +4,8 @@ This addOn automatically stacks and sorts your items.
 
 ![Alt text](http://i.imgur.com/DZgQPaa.png)
 
+[Video demonstration](https://www.youtube.com/watch?v=DGjBcyg4cys) (The minimap button is from an older version)
+
 ### Commands
 **/cleanupreverse** (Makes the sorting start at the top of your bags instead of the bottom)<br/>
 **/cleanupbags framename** (Changes the frame the "Clean Up Bags"-button is attached to to **framename**, requires **/reload**)<br/>
