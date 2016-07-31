@@ -265,12 +265,9 @@ function Clean_Up:CreateButton(name, db, action)
 	button:GetHighlightTexture():SetPoint('CENTER', 0, 0)
 	button:RegisterForDrag('LeftButton')
 	button:SetScript('OnUpdate', function()
-		if IsAltKeyDown() and this:GetFrameLevel() < 129 then
-			this.frameLevel = this:GetFrameLevel()
-			this:SetFrameLevel(129)
-		elseif not IsAltKeyDown() and this.frameLevel then
-			this:SetFrameLevel(this.frameLevel)
-			this.frameLevel = nil
+		if IsAltKeyDown() ~= this.alt then
+			this.alt = IsAltKeyDown()
+			this:SetFrameLevel(this.alt and 129 or getglobal(db.parent):GetFrameLevel() + 1)
 		end
 	end)
 	button:SetScript('OnDragStart', function()
