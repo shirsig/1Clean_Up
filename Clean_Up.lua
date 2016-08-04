@@ -1,4 +1,5 @@
 local Clean_Up = CreateFrame('Frame')
+Clean_Up:Hide()
 Clean_Up:SetScript('OnUpdate', function()
 	this:UPDATE()
 end)
@@ -123,57 +124,53 @@ function Clean_Up:UPDATE()
 		self:CreateBankButton()
 	end
 
-	if self.state == 'SELL_TRASH' then
+	if self.containers == self.BAGS then
 		if self:SellTrash() then
 			return
 		end
 
 		self:CreateModel()
-		self.state = 'STACK&SORT'
 	end
 
-	if self.state == 'STACK&SORT' then
-		local incomplete
+	local complete = true
 
-		for _, target in self.targets do
-			local targetModel = self.model[target.slot]
-			if targetModel.content.item ~= target.content.item or targetModel.content.amount < target.content.amount then
-				local candidates = {}
+	for _, task in self.tasks do
+		if task.slot.content.item ~= task.item or task.slot.content.amount < task.amount then
+			local candidates = {}
 
-				for _, source in self.model do
-					local srcTarget = self.targets[source.slot]
-					local validSource = not (srcTarget and source.content.item == srcTarget.content.item and source.content.amount <= srcTarget.content.amount)
-					local validDestination = source.slot ~= target.slot and source.content.item == target.content.item
-					if validSource and validDestination then
-						tinsert(candidates, {
-							sortKey = abs(source.content.amount - target.content.amount + (targetModel.content.item == target.content.item and targetModel.content.amount or 0)),
-							slot = source.slot,
-						})
-					end
+			for _, slot in self.task.slots do
+				if not (self.tasks[slot] and slot.content.item == self.tasks[slot].item and slot.content.amount <= self.tasks[slot].amount)
+						and slot ~= task.slot
+						and slot.content.item == task.item
+				then
+					tinsert(candidates, {
+						sortKey = abs(slot.content.amount - task.amount + (task.slot.content.item == task.item and task.slot.content.amount or 0)),
+						slot = slot,
+					})
 				end
+			end
 
-				sort(candidates, function(a, b) return a.sortKey < b.sortKey end)
+			sort(candidates, function(a, b) return a.sortKey < b.sortKey end)
 
-				for _, candidate in candidates do
-					incomplete = true
-					if self:Move(candidate.slot, target.slot) then
-						break
-					end
+			for _, candidate in candidates do
+				complete = false
+				if self:Move(candidate.slot, task.slot) then
+					break
 				end
 			end
 		end
+	end
 
-		for srcPos, source in self.model do
-			for dstPos, destination in self.model do
-				if (srcPos ~= dstPos) and source.content.item == destination.content.item and source.content.amount < source.content.capacity and destination.content.amount < destination.content.capacity then
-					self:Move(source.slot, destination.slot)
-				end
+	for srcPos, source in self.model do
+		for dstPos, destination in self.model do
+			if (srcPos ~= dstPos) and source.content.item == destination.content.item and source.content.amount < source.content.capacity and destination.content.amount < destination.content.capacity then
+				self:Move(source.slot, destination.slot)
 			end
 		end
+	end
 
-		if not incomplete then
-			self.state = nil
-		end
+	if complete then
+		Clean_Up:Hide()
 	end
 end
 
@@ -409,8 +406,8 @@ local model_mt = {
 }
 
 local targets_mt = {
-	__newindex = function(self, slot, target)
-		rawset(self, tostring(slot), target)
+	__newindex = function(self, slot, task)
+		rawset(self, tostring(slot), task)
 	end,
 	__index = function(self, slot)
 		return rawget(self, tostring(slot))
@@ -447,6 +444,7 @@ function Clean_Up:Go()
 		self:CreateModel()
 		self.state = 'STACK&SORT'
 	end
+	Clean_Up:Show()
 end
 
 function Clean_Up:CreateModel(containers)
@@ -487,13 +485,13 @@ function Clean_Up:CreateModel(containers)
 		end
 		sort(items, function(a, b) return self:LT(a.sortKey, b.sortKey) end)
 
- 		self.targets = setmetatable({}, targets_mt)
+ 		self.tasks = setmetatable({}, targets_mt)
 
 		for _, slot in slots do
 			for _, key in {Clean_Up_Assignments[tostring(slot)]} do
 				for _, item in {itemMap[key]} do
 					if item.amount > 0 then
-						self.targets[slot] = {
+						self.tasks[slot] = {
 							key = item.key,
 							slot = slot,
 							amount = min(item.amount, item.capacity),
@@ -510,8 +508,8 @@ function Clean_Up:CreateModel(containers)
 			while item.amount > 0 do
 				local slot = tremove(slots)
 				
-				if not self.targets[slot] then
-					self.targets[slot] = {
+				if not self.tasks[slot] then
+					self.tasks[slot] = {
 						key = item.key,
 						slot = slot,
 						amount = min(item.amount, item.capacity),
@@ -544,9 +542,6 @@ do
 		__call = function(self, ...)
 			return return self.container, self.position
 		end,		
-		__eq = function(a, b)
-			return a.container == b.container and a.position == b.position
-		end,
 	}
 
 	function Clean_Up:Slot(container, position)
