@@ -7,8 +7,8 @@ Clean_Up:SetScript('OnEvent', function()
 end)
 Clean_Up:RegisterEvent('ADDON_LOADED')
 
-Clean_Up_Bags = { parent='ContainerFrame1', position={0, 0} }
-Clean_Up_Bank = { parent='BankFrame', position={0, 0} }
+Clean_Up_Bags = {parent='ContainerFrame1', position={0, 0}}
+Clean_Up_Bank = {parent='BankFrame', position={0, 0}}
 Clean_Up_Reversed = false
 Clean_Up_Assignments = {}
 
@@ -32,7 +32,7 @@ Clean_Up.CONTAINER_CLASSES = {
     {22250, 22251, 22252}, 
 }
 
-Clean_Up.ITEM_CLASSES = { GetAuctionItemClasses() }
+Clean_Up.ITEM_CLASSES = {GetAuctionItemClasses()}
 
 function Clean_Up:Log(msg)
 	DEFAULT_CHAT_FRAME:AddMessage('[Clean Up] '..tostring(msg), 1, 1, 0)
@@ -48,7 +48,7 @@ function Clean_Up:ItemClassKey(itemClass)
 end
 
 function Clean_Up:ItemSubClassKey(itemClass, itemSubClass)
-	for i, SubClass in { GetAuctionItemSubClasses(self:ItemClassKey(itemClass)) } do
+	for i, SubClass in {GetAuctionItemSubClasses(self:ItemClassKey(itemClass))} do
 		if itemSubClass == SubClass then
 			return i
 		end
@@ -57,7 +57,7 @@ function Clean_Up:ItemSubClassKey(itemClass, itemSubClass)
 end
 
 function Clean_Up:ItemSlotKey(itemClass, itemSubClass, itemSlot)
-	for i, slot in { GetAuctionInvTypes(self:ItemClassKey(itemClass), self:ItemSubClassKey(itemSubClass)) } do
+	for i, slot in {GetAuctionInvTypes(self:ItemClassKey(itemClass), self:ItemSubClassKey(itemSubClass))} do
 		if itemSlot == slot then
 			return i
 		end
@@ -123,31 +123,31 @@ function Clean_Up:UPDATE()
 		self:CreateBankButton()
 	end
 
-	if self.state == 'sell' then
+	if self.state == 'SELL_TRASH' then
 		if self:SellTrash() then
 			return
 		end
 
 		self:CreateModel()
-		self.state = 'stack&sort'
+		self.state = 'STACK&SORT'
 	end
 
-	if self.state == 'stack&sort' then
+	if self.state == 'STACK&SORT' then
 		local incomplete
 
 		for _, target in self.targets do
 			local targetModel = self.model[target.slot]
-			if targetModel.key ~= target.key or targetModel.count < target.count then
+			if targetModel.content.item ~= target.content.item or targetModel.content.amount < target.content.amount then
 				local candidates = {}
 
-				for _, srcModel in self.model do
-					local srcTarget = self.targets[srcModel.slot]
-					local canMoveSrc = not (srcTarget and srcModel.key == srcTarget.key and srcModel.count <= srcTarget.count)
-					local canMoveToDst = srcModel.slot ~= target.slot and srcModel.key == target.key
-					if canMoveSrc and canMoveToDst then
+				for _, source in self.model do
+					local srcTarget = self.targets[source.slot]
+					local validSource = not (srcTarget and source.content.item == srcTarget.content.item and source.content.amount <= srcTarget.content.amount)
+					local validDestination = source.slot ~= target.slot and source.content.item == target.content.item
+					if validSource and validDestination then
 						tinsert(candidates, {
-							sortKey = abs(srcModel.count - target.count + (targetModel.key == target.key and targetModel.count or 0)),
-							slot = srcModel.slot,
+							sortKey = abs(source.content.amount - target.content.amount + (targetModel.content.item == target.content.item and targetModel.content.amount or 0)),
+							slot = source.slot,
 						})
 					end
 				end
@@ -163,10 +163,10 @@ function Clean_Up:UPDATE()
 			end
 		end
 
-		for srcPos, srcModel in self.model do
-			for dstPos, dstModel in self.model do
-				if (srcPos ~= dstPos) and srcModel.key == dstModel.key and srcModel.count < srcModel.stack and dstModel.count < dstModel.stack then
-					self:Move(srcModel.slot, dstModel.slot)
+		for srcPos, source in self.model do
+			for dstPos, destination in self.model do
+				if (srcPos ~= dstPos) and source.content.item == destination.content.item and source.content.amount < source.content.capacity and destination.content.amount < destination.content.capacity then
+					self:Move(source.slot, destination.slot)
 				end
 			end
 		end
@@ -244,13 +244,15 @@ end
 
 function Clean_Up:CreateBagsButton()
 	self.bagsButton = self:CreateButton('Clean Up Bags', Clean_Up_Bags, function()
-		self:Go(self.BAGS)
+		self.containers = self.BAGS
+		self:Go()
 	end)
 end
 
 function Clean_Up:CreateBankButton()
 	self.bankButton = self:CreateButton('Clean Up Bank', Clean_Up_Bank, function()
-		self:Go(self.BANK)
+		self.containers = self.BANK
+		self:Go()
 	end)
 end
 
@@ -340,19 +342,16 @@ function Clean_Up:Move(srcSlot, dstSlot)
 	    local _, _, srcLocked = GetContainerItemInfo(unpack(srcSlot))
 	    local _, _, dstLocked = GetContainerItemInfo(unpack(dstSlot))
     	if srcLocked or dstLocked then
-			local srcModel = self.model[srcSlot]
-			local dstModel = self.model[dstSlot]
-			if srcModel.key == dstModel.key then
-				local count = min(srcModel.count, dstModel.stack - dstModel.count)
-				srcModel.count = srcModel.count - count
-				self.model[srcSlot] = srcModel
-				dstModel.count = dstModel.count + count
-				self.model[dstSlot] = dstModel
+			local source = self.model[srcSlot]
+			local destination = self.model[dstSlot]
+			if source.content.item == destination.content.item then
+				local amount = min(source.content.amount, destination.content.capacity - destination.content.amount)
+				source.content.amount = source.content.amount - amount
+				self.model[srcSlot] = source
+				destination.content.amount = destination.content.amount + amount
+				self.model[dstSlot] = destination
 			else
-				srcModel.slot = dstSlot
-				self.model[dstSlot] = srcModel
-				dstModel.slot = srcSlot
-				self.model[srcSlot] = dstModel
+				source.content, destination.content = destination.content, source.content
 			end
 		end
 
@@ -399,7 +398,7 @@ end
 
 local model_mt = {
 	__newindex = function(self, slot, model)
-		if model.count == 0 then
+		if model.content.amount == 0 then
 			model.key = {}
 		end
 		rawset(self, tostring(slot), model)
@@ -418,183 +417,10 @@ local targets_mt = {
 	end,
 }
 
-function Clean_Up:CreateModel()
- 	
- 	self.model = setmetatable({}, model_mt)
-
-	for _, bagGroup in self.bagGroups do
-
-		local itemMap = {}
-		for _, slot in self:Slots(bagGroup) do
-
-			local link = GetContainerItemLink(unpack(slot))
-			
-			if link then
-
-				local _, _, itemID = strfind(link, 'item:(%d+)')
-				itemID = tonumber(itemID)
-				
-				local itemName, _, itemRarity, itemMinLevel, itemClass, itemSubClass, itemStack, itemEquipLoc = GetItemInfo(itemID)
-				local _, count = GetContainerItemInfo(unpack(slot))
-				
-				local charges, usable, soulbound, conjured = self:TooltipInfo(slot)
-
-				local sortKey = {}
-
-				-- hearthstone
-				if itemID == 6948 then
-					tinsert(sortKey, 1)
-
-				-- mounts
-				elseif self.MOUNT[itemID] then
-					tinsert(sortKey, 2)
-
-				-- special items
-				elseif self.SPECIAL[itemID] then
-					tinsert(sortKey, 3)
-
-				-- key items
-				elseif self.KEY[itemID] then
-					tinsert(sortKey, 4)
-
-				-- tools
-				elseif self.TOOL[itemID] then
-					tinsert(sortKey, 5)
-
-				-- conjured items
-				elseif conjured then
-					tinsert(sortKey, 13)
-
-				-- soulbound items
-				elseif soulbound then
-					tinsert(sortKey, 6)
-
-				-- reagents
-				elseif itemClass == self.ITEM_CLASSES[9] then
-					tinsert(sortKey, 7)
-
-				-- quest items
-				elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
-					tinsert(sortKey, 9)
-
-				-- consumables
-				elseif usable and itemClass ~= self.ITEM_CLASSES[1] and itemClass ~= self.ITEM_CLASSES[2] and itemClass ~= self.ITEM_CLASSES[8] or itemClass == self.ITEM_CLASSES[4] then
-					tinsert(sortKey, 8)
-
-				-- higher quality
-				elseif itemRarity > 1 then
-					tinsert(sortKey, 10)
-
-				-- common quality
-				elseif itemRarity == 1 then
-					tinsert(sortKey, 11)
-
-				-- junk
-				elseif itemRarity == 0 then
-					tinsert(sortKey, 12)
-				end
-				
-				tinsert(sortKey, self:ItemClassKey(itemClass))
-				tinsert(sortKey, self:ItemSlotKey(itemClass, itemSubClass, itemEquipLoc))
-				tinsert(sortKey, self:ItemSubClassKey(itemClass, itemSubClass))
-				tinsert(sortKey, itemName)
-				tinsert(sortKey, 1/charges)
-
-				local key = self:ItemKey(link, charges)
-
-				itemMap[key] = itemMap[key] or {
-					sortKey = sortKey,
-					key = key,
-					stack = itemStack,
-					count = 0,
-				}
-				itemMap[key].count = itemMap[key].count + count
-
-				self.model[slot] = {
-					key = key,
-					stack = itemStack,
-					slot = slot,
-					count = count,
-				}
-			else
-				self.model[slot] = {
-					key = {},
-					slot = slot,
-					count = 0,
-				}
-			end
-		end
-		
-		local items = {}
-		for _, item in itemMap do
-			tinsert(items, item)
-		end
-		sort(items, function(a, b) return self:LT(a.sortKey, b.sortKey) end)
-
- 		self.targets = setmetatable({}, targets_mt)
-
-		for _, slot in self:Slots(bagGroup) do
-			for _, key in {Clean_Up_Assignments[tostring(slot)]} do
-				for _, item in {itemMap[key]} do
-					if item.count > 0 then
-						self.targets[slot] = {
-							key = item.key,
-							slot = slot,
-							count = min(item.count, item.stack),
-						}
-						item.count = item.count - min(item.count, item.stack)
-					end
-				end	
-			end
-		end
-
-		local slots = self:Slots(bagGroup)
-
-		for _, item in items do
-			while item.count > 0 do
-				local slot = tremove(slots)
-				
-				if not self.targets[slot] then
-					self.targets[slot] = {
-						key = item.key,
-						slot = slot,
-						count = min(item.count, item.stack),
-					}
-					item.count = item.count - min(item.count, item.stack)
-				end
-	        end
-	    end
-	end
-end
-
-function Clean_Up:CreateBagGroups(containers)
-	self.bagGroups = {}
-
-	for key, containerClass in self.CONTAINER_CLASSES do
-    	self.bagGroups[key] = {}
-	end
-	self.bagGroups['generic'] = {}
-
-	for _, bag in containers do
-		if GetContainerNumSlots(bag) > 0 then
-			local bagName = GetBagName(bag)
-
-			local assigned = false
-			if bagName then
-				for key, containerClass in self.CONTAINER_CLASSES do
-					for _, id in containerClass do
-						if bagName == GetItemInfo(id) then
-							tinsert(self.bagGroups[key], bag)
-							assigned = true
-							break	
-						end		
-					end	
-				end
-			end
-				
-			if not assigned then
-				tinsert(self.bagGroups['generic'], bag)
-			end
+function Clean_Up:Trash(container, position)
+	for itemID in string.gfind(GetContainerItemLink(container, position) or '', 'item:(%d+)') do
+		if ({GetItemInfo(itemID)})[3] == 0 then
+			return true
 		end
 	end
 end
@@ -602,12 +428,11 @@ end
 function Clean_Up:SellTrash()
 	local found
 	if self.atMerchant then
-		for _, slot in self:Slots(Clean_Up.BAGS) do
-			for id in string.gfind(GetContainerItemLink(unpack(slot)) or '', 'item:(%d+)') do
-				local _, _, quality = GetItemInfo(id)
-				if quality == 0 then
+		for _, container in self.BAGS do
+			for position=1,GetContainerNumSlots(container) do
+				if self:Trash(container, position) then
 					found = true
-					UseContainerItem(unpack(slot))
+					UseContainerItem(container, position)
 				end
 			end
 		end
@@ -615,45 +440,200 @@ function Clean_Up:SellTrash()
 	return found
 end
 
-function Clean_Up:Go(containers)
-	self:CreateBagGroups(containers)
+function Clean_Up:Go()
 	if containers == self.BAGS then
-		self.state = 'sell'
+		self.state = 'SELL_TRASH'
 	elseif containers == self.BANK then
 		self:CreateModel()
-		self.state = 'stack&sort'
+		self.state = 'STACK&SORT'
 	end
 end
 
-function Clean_Up:Slots(containers)
-	local slots = {}
+function Clean_Up:CreateModel(containers)
+	self.classes = {}
+	for classKey in self.CONTAINER_CLASSES do
+    	self.classes[classKey] = {items={}, slots={}}
+	end
+	self.classes._ = {}
+
+	self.slots = {}
+
+	self.items = {}
+
 	for _, container in containers do
-		for position=1,GetContainerNumSlots(container) do
-			tinsert(slots, self:Slot(container, position))
+
+		if GetContainerNumSlots(container) > 0 then
+			local class = self.classes[self:ContainerClassKey(container)]
+			for position=1,GetContainerNumSlots(container) do
+				local slot = self:Slot(container, position)
+				tinsert(self.slots, slot)
+				tinsert(class.slots, slot)
+				class.items[slot.content.item] = class.items[slot.content.item] or {
+					sortKey = sortKey,
+					key = key,
+					capacity = itemStack,
+					amount = 0,
+				}
+				class.items[slot.content.item].amount = class.items[slot.content.item].amount + slot.content.amount
+			end
 		end
 	end
-	sort(slots)
-	return slots
+
+	for _, class in self.classes do
+		
+		local items = {}
+		for _, item in class.items do
+			tinsert(items, item)
+		end
+		sort(items, function(a, b) return self:LT(a.sortKey, b.sortKey) end)
+
+ 		self.targets = setmetatable({}, targets_mt)
+
+		for _, slot in slots do
+			for _, key in {Clean_Up_Assignments[tostring(slot)]} do
+				for _, item in {itemMap[key]} do
+					if item.amount > 0 then
+						self.targets[slot] = {
+							key = item.key,
+							slot = slot,
+							amount = min(item.amount, item.capacity),
+						}
+						item.amount = item.amount - min(item.amount, item.capacity)
+					end
+				end	
+			end
+		end
+
+		local slots = self:Slots(bagGroup) -- TODO
+
+		for _, item in items do
+			while item.amount > 0 do
+				local slot = tremove(slots)
+				
+				if not self.targets[slot] then
+					self.targets[slot] = {
+						key = item.key,
+						slot = slot,
+						amount = min(item.amount, item.capacity),
+					}
+					item.amount = item.amount - min(item.amount, item.capacity)
+				end
+	        end
+	    end
+	end
+end
+
+function Clean_Up:ContainerClassKey(container)
+	for key, class in self.CONTAINER_CLASSES do
+		for _, id in class do
+			for _, name in {GetBagName(container)} do
+				if name == GetItemInfo(id) then
+					return key
+				end
+			end	
+		end	
+	end
+	return '_'
 end
 
 do
 	local slot_mt = {
 		__tostring = function(self)
-			return self[1]..':'..self[2]
+			return self.container..':'..self.position
 		end,
-		__lt = function(a, b)
-			if Clean_Up_Reversed then
-				return Clean_Up:LT(b, a)
-			else
-				return Clean_Up:LT(a, b)
-			end
-		end,
+		__call = function(self, ...)
+			return return self.container, self.position
+		end,		
 		__eq = function(a, b)
-			return a[1] == b[1] and a[2] == b[2]
+			return a.container == b.container and a.position == b.position
 		end,
 	}
 
 	function Clean_Up:Slot(container, position)
-		return setmetatable({container, position}, slot_mt)
+		return setmetatable({
+			container = container,
+			position = position,
+			content = self:Content(container, position)
+		}, slot_mt)
+	end
+end
+
+function Clean_Up:Content(slot)
+	for link in {GetContainerItemLink(unpack(slot))} do
+		local _, _, itemID = strfind(link, 'item:(%d+)')
+		itemID = tonumber(itemID)
+		
+		local itemName, _, itemRarity, itemMinLevel, itemClass, itemSubClass, itemStack, itemEquipLoc = GetItemInfo(itemID)
+		local _, count = GetContainerItemInfo(unpack(slot))
+		
+		local charges, usable, soulbound, conjured = self:TooltipInfo(slot)
+
+		local sortKey = {}
+
+		-- hearthstone
+		if itemID == 6948 then
+			tinsert(sortKey, 1)
+
+		-- mounts
+		elseif self.MOUNT[itemID] then
+			tinsert(sortKey, 2)
+
+		-- special items
+		elseif self.SPECIAL[itemID] then
+			tinsert(sortKey, 3)
+
+		-- key items
+		elseif self.KEY[itemID] then
+			tinsert(sortKey, 4)
+
+		-- tools
+		elseif self.TOOL[itemID] then
+			tinsert(sortKey, 5)
+
+		-- conjured items
+		elseif conjured then
+			tinsert(sortKey, 13)
+
+		-- soulbound items
+		elseif soulbound then
+			tinsert(sortKey, 6)
+
+		-- reagents
+		elseif itemClass == self.ITEM_CLASSES[9] then
+			tinsert(sortKey, 7)
+
+		-- quest items
+		elseif tooltipLine2 and tooltipLine2 == ITEM_BIND_QUEST then
+			tinsert(sortKey, 9)
+
+		-- consumables
+		elseif usable and itemClass ~= self.ITEM_CLASSES[1] and itemClass ~= self.ITEM_CLASSES[2] and itemClass ~= self.ITEM_CLASSES[8] or itemClass == self.ITEM_CLASSES[4] then
+			tinsert(sortKey, 8)
+
+		-- higher quality
+		elseif itemRarity > 1 then
+			tinsert(sortKey, 10)
+
+		-- common quality
+		elseif itemRarity == 1 then
+			tinsert(sortKey, 11)
+
+		-- junk
+		elseif itemRarity == 0 then
+			tinsert(sortKey, 12)
+		end
+		
+		tinsert(sortKey, self:ItemClassKey(itemClass))
+		tinsert(sortKey, self:ItemSlotKey(itemClass, itemSubClass, itemEquipLoc))
+		tinsert(sortKey, self:ItemSubClassKey(itemClass, itemSubClass))
+		tinsert(sortKey, itemName)
+		tinsert(sortKey, 1/charges)
+
+		return {
+			sortKey = sortKey,
+			item = self:ItemKey(link, charges),
+			capacity = itemStack,
+			amount = count,
+		}
 	end
 end
