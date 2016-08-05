@@ -1,73 +1,77 @@
-local Clean_Up = CreateFrame('Frame')
-Clean_Up:Hide()
-Clean_Up:SetScript('OnUpdate', function()
-	this:UPDATE()
+local __ = CreateFrame('Frame')
+__:Hide()
+__:SetScript('OnUpdate', function()
+	this.UPDATE()
 end)
-Clean_Up:SetScript('OnEvent', function()
-	this[event](this)
+__:SetScript('OnEvent', function()
+	this[event]()
 end)
-Clean_Up:RegisterEvent('ADDON_LOADED')
+__:RegisterEvent('ADDON_LOADED')
 
 Clean_Up_Bags = {parent='ContainerFrame1', position={0, 0}}
 Clean_Up_Bank = {parent='BankFrame', position={0, 0}}
 Clean_Up_Reversed = false
 Clean_Up_Assignments = {}
 
-Clean_Up.BAGS = {0, 1, 2, 3, 4}
-Clean_Up.BANK = {-1, 5, 6, 7, 8, 9, 10}
+__.BAGS = {0, 1, 2, 3, 4}
+__.BANK = {-1, 5, 6, 7, 8, 9, 10}
 
-Clean_Up.CONTAINER_CLASSES = {
-	-- ammo pouches
-	{2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320}, 
-	
-	-- quivers
-	{2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714}, 
+__.ITEM_TYPES = {GetAuctionItemClasses()}
 
-	-- enchanting bags
-	{22246, 22248, 22249}, 
-
-	-- soul bags
-    {22243, 22244, 21340, 21341, 21342}, 
-
-	-- herb bags
-    {22250, 22251, 22252}, 
-}
-
-Clean_Up.ITEM_CLASSES = {GetAuctionItemClasses()}
-
-function Clean_Up:Log(msg)
-	DEFAULT_CHAT_FRAME:AddMessage('[Clean Up] '..tostring(msg), 1, 1, 0)
+function __.ItemTypeKey(itemClass)
+	return __.Key(__.ITEM_TYPES, itemClass) or 0
 end
 
-function Clean_Up:Key(table, value)
-	for k, v in table do
-		if v == value then
-			return k
-		end
-	end
+function __.ItemSubTypeKey(itemClass, itemSubClass)
+	return __.Key({GetAuctionItemSubClasses(__.ItemTypeKey(itemClass))}, itemClass) or 0
 end
 
-function Clean_Up:ItemClassIndex(itemClass)
-	return self:Key(self.ITEM_CLASSES, itemClass) or 0
+function __.ItemInvTypeKey(itemClass, itemSubClass, itemSlot)
+	return __.Key({GetAuctionInvTypes(__.ItemTypeKey(itemClass), __.ItemSubTypeKey(itemSubClass))}, itemSlot) or 0
 end
 
-function Clean_Up:ItemSubClassIndex(itemClass, itemSubClass)
-	return self:Key({GetAuctionItemSubClasses(self:ItemClassKey(itemClass))}, itemClass) or 0
-end
-
-function Clean_Up:ItemInvTypeIndex(itemClass, itemSubClass, itemSlot)
-	return self:Key({GetAuctionInvTypes(self:ItemClassKey(itemClass), self:ItemSubClassKey(itemSubClass))}, itemSlot) or 0
-end
-
-function Clean_Up:ADDON_LOADED()
+function __.ADDON_LOADED()
 	if arg1 ~= 'Clean_Up' then
 		return
 	end
 
-	self:RegisterEvent('MERCHANT_SHOW')
-	self:RegisterEvent('MERCHANT_CLOSED')
+	__:RegisterEvent('UI_ERROR_MESSAGE')
+	__:RegisterEvent('MERCHANT_SHOW')
+	__:RegisterEvent('MERCHANT_CLOSED')
 
-	self.MOUNT = self:Set(
+	__.CLASSES = {
+		-- arrow
+		{
+			containers = {2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320},
+			items = __.Set()
+		}
+		
+		-- bullet
+		{
+			containers = {2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714},
+			items = __.Set()
+		} 
+
+		-- soul
+		{
+			containers = {22243, 22244, 21340, 21341, 21342},
+			items = __.Set()
+		}
+
+		-- ench
+		{
+			containers = {22246, 22248, 22249},
+			items = __.Set()
+		}
+
+		-- herb
+		{
+			containers = {22250, 22251, 22252},
+			items = __.Set()
+		}
+	}
+
+	__.MOUNT = __.Set(
 		-- rams
 		5864, 5872, 5873, 18785, 18786, 18787, 18244, 19030, 13328, 13329,
 
@@ -96,122 +100,170 @@ function Clean_Up:ADDON_LOADED()
 		21218, 21321, 21323, 21324, 21176
 	)
 
-	self.SPECIAL = self:Set(5462, 17696, 17117, 13347, 13289, 11511)
+	__.SPECIAL = __.Set(5462, 17696, 17117, 13347, 13289, 11511)
 
-	self.KEY = self:Set(9240, 17191, 13544, 12324, 16309, 12384, 20402)
+	__.KEY = __.Set(9240, 17191, 13544, 12324, 16309, 12384, 20402)
 
-	self.TOOL = self:Set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
+	__.TOOL = __.Set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
 
-	self:SetupHooks()
-	self:SetupSlash()
+	__.SetupHooks()
+	__.SetupSlash()
 
 	CreateFrame('GameTooltip', 'Clean_Up_Tooltip', nil, 'GameTooltipTemplate')
 end
 
-function Clean_Up:UPDATE()
-	if not self.bagsButton and getglobal(Clean_Up_Bags.parent) then
-		self:CreateBagsButton()
+function __.UPDATE()
+	if not __.bagsButton and getglobal(Clean_Up_Bags.parent) then
+		__.CreateButton('Bags')
 	end
 
-	if not self.bankButton and getglobal(Clean_Up_Bank.parent) then
-		self:CreateBankButton()
+	if not __.bankButton and getglobal(Clean_Up_Bank.parent) then
+		__.CreateBankButton('Bank')
 	end
 
-	if self.containers == self.BAGS then
-		if self:SellTrash() then
+	if __.containers == __.BAGS and not __.model then
+		if __.SellTrash() then
 			return
 		end
 	end
 
-	if not self.slots then
-		self:CreateModel()
+	if not __.model then
+		__.CreateModel()
 	end
 
-	if self:Sort() then
-		Clean_Up:Hide()
+	if __.Sort() then
+		__:Hide()
 	end
 
-	self:Stack()
+	__.Stack()
 end
 
-function Clean_Up:MERCHANT_SHOW()
-	self.atMerchant = true
+function __.UI_ERROR_MESSAGE()
+	if self.Inbox_Opening then
+		if arg1 == BAG_ITEM_CLASS_MISMATCH then
+			__.Log('Invalid assignment', 1, 0, 0)
+			__:Hide()
+		elseif arg1 == BAG_ERROR then
+			__.Log('Unknown error', 1, 0, 0)
+			__:Hide()
+		end
+	end
 end
 
-function Clean_Up:MERCHANT_CLOSED()
-	self.atMerchant = false
+function __.MERCHANT_SHOW()
+	__.atMerchant = true
 end
 
-function Clean_Up:ItemKey(link, charges)
+function __.MERCHANT_CLOSED()
+	__.atMerchant = false
+end
+
+function __.Log(msg)
+	DEFAULT_CHAT_FRAME:AddMessage('[Clean Up] '..tostring(msg), 1, 1, 0)
+end
+
+function __.Set(...)
+	local t = {}
+	for i=1,arg.n do
+		t[arg[i]] = true
+	end
+	return t
+end
+
+function __.LT(a, b)
+	local i = 1
+	while true do
+		if a[i] and b[i] and a[i] ~= b[i] then
+			return a[i] < b[i]
+		elseif not a[i] and b[i] then
+			return true
+		elseif not b[i] then
+			return false
+		end
+		i = i + 1
+	end
+end
+
+function __.Key(table, value)
+	for k, v in table do
+		if v == value then
+			return k
+		end
+	end
+end
+
+function __.SlotKey(container, position)
+	return container..':'..position
+end
+
+function __.ItemKey(link, charges)
 	return link..(charges > 1 and charges or '')
 end
 
-function Clean_Up:SetupHooks()
-	local orig_PickupContainerItem = PickupContainerItem
+function __.SetupHooks()
+
+	__.PickupContainerItem = PickupContainerItem
 	function PickupContainerItem(...)
-		local slot = self:Slot(arg[1], arg[2])
+		local container, position = unpack(arg)
 		if IsAltKeyDown() then
-			for _, link in {GetContainerItemLink(unpack(slot))} do
-				local key = self:ItemKey(link, self:TooltipInfo(slot))
-				Clean_Up_Assignments[tostring(slot)] = key
-				self:Log(slot..' assigned to '..key)
+			for _, link in {GetContainerItemLink(container, position)} do
+				local slotKey = __.SlotKey(container, position)
+				local itemKey = __.ItemKey(link, __.TooltipInfo(container, position))
+				Clean_Up_Assignments[slotKey] = itemKey
+				__.Log(slotKey)..' assigned to '..itemKey)
 			end
 		else
-			orig_PickupContainerItem(unpack(arg))
+			__.PickupContainerItem(unpack(arg))
 		end
 	end
 
-	local orig_UseContainerItem = UseContainerItem
+	__.UseContainerItem = UseContainerItem
 	function UseContainerItem(...)
-		local slot = self:Slot(arg[1], arg[2])
+		local container, position = unpack(arg)
 		if IsAltKeyDown() then
-			if Clean_Up_Assignments[tostring(slot)] then
-				Clean_Up_Assignments[tostring(slot)] = nil
-				self:Log(slot..' freed')
+			local slotKey = __.SlotKey(container, position)
+			if Clean_Up_Assignments[slotKey] then
+				Clean_Up_Assignments[slotKey] = nil
+				__.Log(slotKey..' freed')
 			end
 		else
-			orig_UseContainerItem(unpack(arg))
+			__.UseContainerItem(unpack(arg))
 		end
 	end
 end
 
-function Clean_Up:SetupSlash()
+function __.SetupSlash()
   	SLASH_CLEANUPBAGS1 = '/cleanupbags'
 	function SlashCmdList.CLEANUPBAGS(arg)
-		Clean_Up_Bags = { parent=arg, position={0, 0} }
-		self:Log('Bags-frame: '..arg)
+		Clean_Up_Bags = {parent=arg, position={0, 0}}
+		__.Log('Bags-frame: '..arg)
 	end
 
 	SLASH_CLEANUPBANK1 = '/cleanupbank'
 	function SlashCmdList.CLEANUPBANK(arg)
-		Clean_Up_Bank = { parent=arg, position={0, 0} }
-		self:Log('Bank-frame: '..arg)
+		Clean_Up_Bank = {parent=arg, position={0, 0}}
+		__.Log('Bank-frame: '..arg)
 	end
 
     SLASH_CLEANUPREVERSE1 = '/cleanupreverse'
     function SlashCmdList.CLEANUPREVERSE(arg)
         Clean_Up_Reversed = not Clean_Up_Reversed
-        self:Log('Sort order: '..(Clean_Up_Reversed and 'Reversed' or 'Standard'))
+        __.Log('Sort order: '..(Clean_Up_Reversed and 'Reversed' or 'Standard'))
 	end
 end
 
-function Clean_Up:CreateBagsButton()
-	self.bagsButton = self:CreateButton('Clean Up Bags', Clean_Up_Bags, function()
-		self.containers = self.BAGS
-		self:Go()
+function __.CreateBankButton()
+	__.bankButton = __.Button('Clean Up Bank', Clean_Up_Bank, function()
+		__.containers = __.BANK
+		__.Go()
 	end)
 end
 
-function Clean_Up:CreateBankButton()
-	self.bankButton = self:CreateButton('Clean Up Bank', Clean_Up_Bank, function()
-		self.containers = self.BANK
-		self:Go()
-	end)
-end
+function __.CreateButton(name)
+	local settings = getglobal('Clean_Up_'..name)
 
-function Clean_Up:CreateButton(name, db, action)
-	local button = CreateFrame('Button', nil, getglobal(db.parent))
-	button:SetPoint('CENTER', unpack(db.position))
+	local button = CreateFrame('Button', nil, getglobal(settings.parent))
+	button:SetPoint('CENTER', unpack(settings.position))
 	button:SetMovable(true)
 	button:SetClampedToScreen(true)
 	button:SetToplevel(true)
@@ -230,7 +282,7 @@ function Clean_Up:CreateButton(name, db, action)
 	button:SetScript('OnUpdate', function()
 		if IsAltKeyDown() ~= this.alt then
 			this.alt = IsAltKeyDown()
-			this:SetFrameLevel(this.alt and 129 or getglobal(db.parent):GetFrameLevel() + 1)
+			this:SetFrameLevel(this.alt and 129 or getglobal(settings.parent):GetFrameLevel() + 1)
 		end
 	end)
 	button:SetScript('OnDragStart', function()
@@ -241,14 +293,15 @@ function Clean_Up:CreateButton(name, db, action)
 	button:SetScript('OnDragStop', function()
 		this:StopMovingOrSizing()
 		local x, y = this:GetCenter()
-		local parentX, parentY = getglobal(db.parent):GetCenter()
-		db.position = { x - parentX, y - parentY }
+		local parentX, parentY = getglobal(settings.parent):GetCenter()
+		settings.position = { x - parentX, y - parentY }
 		this:ClearAllPoints()
-		this:SetPoint('CENTER', unpack(db.position))
+		this:SetPoint('CENTER', unpack(settings.position))
 	end)
 	button:SetScript('OnClick', function()
 		PlaySoundFile([[Interface\AddOns\Clean_Up\UI_BagSorting_01.ogg]])
-		action()
+		__.containers = __.[strupper(name)]
+		__.Go()
 	end)
 	button:SetScript('OnEnter', function()
 		GameTooltip:SetOwner(this)
@@ -258,53 +311,30 @@ function Clean_Up:CreateButton(name, db, action)
 	button:SetScript('OnLeave', function()
 		GameTooltip:Hide()
 	end)
-	return button
+	__[strlower(name)..'Button'] = button
 end
 
-function Clean_Up:Set(...)
-	local t = {}
-	for i=1,arg.n do
-		t[arg[i]] = true
-	end
-	return t
-end
-
-function Clean_Up:LT(a, b)
-	local i = 1
-	while true do
-		if a[i] and b[i] and a[i] ~= b[i] then
-			return a[i] < b[i]
-		elseif not a[i] and b[i] then
-			return true
-		elseif not b[i] then
-			return false
-		end
-		i = i + 1
-	end
-end
-
-function Clean_Up:Move(srcSlot, dstSlot)
-    local _, _, srcLocked = GetContainerItemInfo(unpack(srcSlot))
-    local _, _, dstLocked = GetContainerItemInfo(unpack(dstSlot))
+function __.Move(src, dst)
+    local _, _, srcLocked = GetContainerItemInfo(src())
+    local _, _, dstLocked = GetContainerItemInfo(dst())
     
 	if not srcLocked and not dstLocked then
 		ClearCursor()
-       	PickupContainerItem(unpack(srcSlot))
-		PickupContainerItem(unpack(dstSlot))
+       	PickupContainerItem(src())
+		PickupContainerItem(dst())
 
-	    local _, _, srcLocked = GetContainerItemInfo(unpack(srcSlot))
-	    local _, _, dstLocked = GetContainerItemInfo(unpack(dstSlot))
+	    local _, _, srcLocked = GetContainerItemInfo(src())
+	    local _, _, dstLocked = GetContainerItemInfo(dst())
     	if srcLocked or dstLocked then
-			local source = self.model[srcSlot]
-			local destination = self.model[dstSlot]
-			if source.content.item == destination.content.item then
-				local amount = min(source.content.amount, destination.content.capacity - destination.content.amount)
-				source.content.amount = source.content.amount - amount
-				self.model[srcSlot] = source
-				destination.content.amount = destination.content.amount + amount
-				self.model[dstSlot] = destination
+			if src.state.item == dst.state.item then
+				local count = min(src.state.count, dst.state.stack - dst.state.count)
+				src.state.count = src.state.count - count
+				dst.state.count = dst.state.count + count
+				if src.count == 0 then
+-- TODO
+				end
 			else
-				source.content, destination.content = destination.content, source.content
+				src.state, dst.state = dst.state, src.state
 			end
 		end
 
@@ -312,10 +342,10 @@ function Clean_Up:Move(srcSlot, dstSlot)
     end
 end
 
-function Clean_Up:TooltipInfo(container, position)
+function __.TooltipInfo(container, position)
 	local chargesPattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
 
-	Clean_Up_Tooltip:SetOwner(self, ANCHOR_NONE)
+	Clean_Up_Tooltip:SetOwner(__, ANCHOR_NONE)
 	Clean_Up_Tooltip:ClearLines()
 
 	if container == BANK_CONTAINER then
@@ -325,23 +355,23 @@ function Clean_Up:TooltipInfo(container, position)
 	end
 
 	local charges, usable, soulbound, conjured
-	for i=1,30 do
-		local leftText = getglobal('Clean_Up_TooltipTextLeft'..i):GetText() or ''
+	for i=1,Clean_Up_Tooltip:NumLines() do
+		local text = getglobal('Clean_Up_TooltipTextLeft'..i):GetText() -- TODO
 
-		local _, _, chargeString = strfind(leftText, chargesPattern)
+		local _, _, chargeString = strfind(text, chargesPattern)
 		if chargeString then
 			charges = tonumber(chargeString)
 		end
 
-		if strfind(leftText, '^'..ITEM_SPELL_TRIGGER_ONUSE) then
+		if strfind(text, '^'..ITEM_SPELL_TRIGGER_ONUSE) then
 			usable = true
 		end
 
-		if leftText == ITEM_SOULBOUND then
+		if text == ITEM_SOULBOUND then
 			soulbound = true
 		end
 
-		if leftText == ITEM_CONJURED then
+		if text == ITEM_CONJURED then
 			conjured = true
 		end
 	end
@@ -349,28 +379,16 @@ function Clean_Up:TooltipInfo(container, position)
 	return charges or 1, usable, soulbound, conjured
 end
 
-local model_mt = {
-	__newindex = function(self, slot, model)
-		if model.content.amount == 0 then
-			model.key = {}
-		end
-		rawset(self, tostring(slot), model)
-	end,
-	__index = function(self, slot)
-		return rawget(self, tostring(slot))
-	end,
-}
-
 local targets_mt = {
 	__newindex = function(self, slot, task)
-		rawset(self, tostring(slot), task)
+		rawset(self, __.SlotKey(slot()), task)
 	end,
 	__index = function(self, slot)
-		return rawget(self, tostring(slot))
+		return rawget(self, __.SlotKey(slot()))
 	end,
 }
 
-function Clean_Up:Trash(container, position)
+function __.Trash(container, position)
 	for itemID in string.gfind(GetContainerItemLink(container, position) or '', 'item:(%d+)') do
 		if ({GetItemInfo(itemID)})[3] == 0 then
 			return true
@@ -378,12 +396,12 @@ function Clean_Up:Trash(container, position)
 	end
 end
 
-function Clean_Up:SellTrash()
+function __.SellTrash()
 	local found
-	if self.atMerchant then
-		for _, container in self.BAGS do
+	if __.atMerchant then
+		for _, container in __.BAGS do
 			for position=1,GetContainerNumSlots(container) do
-				if self:Trash(container, position) then
+				if __.Trash(container, position) then
 					found = true
 					UseContainerItem(container, position)
 				end
@@ -393,30 +411,29 @@ function Clean_Up:SellTrash()
 	return found
 end
 
-function Clean_Up:Sort()
+function __.Sort()
 	local complete = true
 
-	for _, task in self.tasks do
-		if task.slot.content.item ~= task.item or task.slot.content.amount < task.amount then
-			local candidates = {}
+	for _, dst in __.model do
+		if dst.task and (dst.state.item ~= dst.task.item or dst.state.item == dst.task.item and dst.state.count < dst.task.count) then
+			complete = false
 
-			for _, slot in self.task.slots do
-				if not (self.tasks[slot] and slot.content.item == self.tasks[slot].item and slot.content.amount <= self.tasks[slot].amount)
-						and slot ~= task.slot
-						and slot.content.item == task.item
+			local sources, rank = {}, {}
+
+			for _, src in __.model do
+				if not (src.task and src.state.item == src.task.item and src.state.count <= src.task.count)
+						and src ~= dst
+						and src.state.item == dst.task.item
 				then
-					tinsert(candidates, {
-						sortKey = abs(slot.content.amount - task.amount + (task.slot.content.item == task.item and task.slot.content.amount or 0)),
-						slot = slot,
-					})
+					rank[src] = abs(src.state.count - dst.task.count + (task.slot.state.item == dst.task.item and dst.state.count or 0))
+					tinsert(sources, src)
 				end
 			end
 
-			sort(candidates, function(a, b) return a.sortKey < b.sortKey end)
+			sort(sources, function(a, b) return rank[a] < rank[b] end)
 
-			for _, candidate in candidates do
-				complete = false
-				if self:Move(candidate.slot, task.slot) then
+			for _, src in sources do
+				if __.Move(src, dst) then
 					break
 				end
 			end
@@ -426,97 +443,87 @@ function Clean_Up:Sort()
 	return complete
 end
 
-function Clean_Up:Stack()
-	for _, src in self.slots do
-		if src.content.amount < src.content.capacity then
-			for _, dst in self.slot do
-				if src ~= dst and src.content.item == dst.content.item and dst.content.amount < dst.content.capacity then
-					self:Move(src, dst)
+function __.Stack()
+	for _, src in __.model do
+		if src.state.count < src.state.stack then
+			for _, dst in __.model do
+				if dst.state.count < dst.state.stack and src.state.item == dst.state.item and src ~= dst then
+					__.Move(src, dst)
 				end
 			end
 		end
 	end
 end
 
-function Clean_Up:Go()
-	if containers == self.BAGS then
-		self.state = 'SELL_TRASH'
-	elseif containers == self.BANK then
-		self:CreateModel()
-		self.state = 'STACK&SORT'
-	end
-	Clean_Up:Show()
+function __.Go()
+	__.model = nil
+	__.Show()
 end
 
-function Clean_Up:CreateModel(containers)
-	self.classes = {}
-	for classKey in self.CONTAINER_CLASSES do
-    	self.classes[classKey] = {items={}, slots={}}
+function __.CreateTask(slot, item)
+	local count = min(item.count, item.stack)
+	slot.task = {
+		item = item.key,
+		slot = slot,
+		count = count,
+	}
+	tinsert(__.model.tasks, slot.task)
+	item.count = item.count - count
+end
+
+function __.CreateModel(containers)
+	__.model = {}
+	local groups = {}
+	for key in __.CLASSES do
+    	groups[key] = {}
 	end
-	self.classes._ = {}
+	local items
 
-	self.slots = {}
-
-	self.items = {}
-
+	local function insert(t, v) if Clean_Up_Reversed then tinsert(t, v) else tinsert(t, 1, v) end end
 	for _, container in containers do
-
-		if GetContainerNumSlots(container) > 0 then
-			local class = self.classes[self:ContainerClassKey(container)]
+		if GetContainerNumSlots(container) > 0 then -- TODO
+			local group = groups[__.ClassKey(container)]
 			for position=1,GetContainerNumSlots(container) do
-				local slot = self:Slot(container, position)
-				tinsert(self.slots, slot)
-				tinsert(class.slots, slot)
-				class.items[slot.content.item] = class.items[slot.content.item] or {
-					sortKey = sortKey,
-					key = key,
-					capacity = itemStack,
-					amount = 0,
+				local slot = __.Slot(container, position)
+				insert(__.model, slot)
+				insert(group, slot)
+				local itemKey = slot.state.item
+
+				items[itemKey] = items[itemKey] or {
+					sortKey = slot.state.sortKey,
+					key = itemKey,
+					stack = slot.state.stack,
+					count = 0,
 				}
-				class.items[slot.content.item].amount = class.items[slot.content.item].amount + slot.content.amount
+				items[itemKey].count = items[itemKey].count + slot.state.count
 			end
 		end
 	end
 
-	for _, class in self.classes do
-		
-		local items = {}
-		for _, item in class.items do
-			tinsert(items, item)
-		end
-		sort(items, function(a, b) return self:LT(a.sortKey, b.sortKey) end)
-
- 		self.tasks = setmetatable({}, targets_mt)
-
-		for _, slot in slots do
-			for _, key in {Clean_Up_Assignments[tostring(slot)]} do
-				for _, item in {itemMap[key]} do
-					if item.amount > 0 then
-						self.tasks[slot] = {
-							key = item.key,
-							slot = slot,
-							amount = min(item.amount, item.capacity),
-						}
-						item.amount = item.amount - min(item.amount, item.capacity)
-					end
-				end	
-			end
-		end
-
-		local slots = self:Slots(bagGroup) -- TODO
-
-		for _, item in items do
-			while item.amount > 0 do
-				local slot = tremove(slots)
-				
-				if not self.tasks[slot] then
-					self.tasks[slot] = {
-						key = item.key,
-						slot = slot,
-						amount = min(item.amount, item.capacity),
-					}
-					item.amount = item.amount - min(item.amount, item.capacity)
+	for _, slot in slots do
+		for _, itemKey in {Clean_Up_Assignments[slot]} do
+			for _, item in {items[itemKey]} do
+				__.CreateTask(slot, item)
+				if item.count == 0 then
+					items[itemKey] == nil
 				end
+			end	
+		end
+	end
+
+	local items, temp = {}, items
+	for _, item in temp do
+		tinsert(items, item)
+	end
+	sort(items, function(a, b) return __.LT(a.sortKey, b.sortKey) end)
+
+	for _, slot in groups._ do
+		if not items[1] then
+			break
+		elseif not slot.task then
+			__.CreateTask(slot, item)
+			if item.count == 0 do
+				tremove(items, 1)
 	        end
 	    end
 	end
@@ -524,11 +531,11 @@ end
 
 do
 	local cache = {}
-	function Clean_Up:ContainerClassKey(container)
+	function __.ClassKey(container)
 		if not cache[container] then
 			for _, name in {container ~= 0 and GetBagName(container)} do			
-				for key, containerClass in self.CONTAINER_CLASSES do
-					for _, itemID in containerClass do
+				for key, class in __.CLASSES do
+					for _, itemID in class do
 						if name == GetItemInfo(itemID) then
 							cache[container] = key
 						end
@@ -543,24 +550,21 @@ end
 
 do
 	local slot_mt = {
-		__tostring = function(self)
-			return self.container..':'..self.position
-		end,
 		__call = function(self, ...)
 			return return self.container, self.position
 		end,		
 	}
 
-	function Clean_Up:Slot(container, position)
+	function __.Slot(container, position)
 		return setmetatable({
 			container = container,
 			position = position,
-			content = self:Content(container, position)
+			state = __.Content(container, position)
 		}, slot_mt)
 	end
 end
 
-function Clean_Up:Content(container, position)
+function __.Content(container, position)
 	for link in {GetContainerItemLink(container, position)} do
 		local _, _, itemID = strfind(link, 'item:(%d+)')
 		itemID = tonumber(itemID)
@@ -568,7 +572,7 @@ function Clean_Up:Content(container, position)
 		local itemName, _, itemRarity, itemMinLevel, itemClass, itemSubClass, itemStack, itemEquipLoc = GetItemInfo(itemID)
 		local _, count = GetContainerItemInfo(container, position)
 		
-		local charges, usable, soulbound, conjured = self:TooltipInfo(container, position)
+		local charges, usable, soulbound, conjured = __.TooltipInfo(container, position)
 
 		local sortKey = {}
 
@@ -577,19 +581,19 @@ function Clean_Up:Content(container, position)
 			tinsert(sortKey, 1)
 
 		-- mounts
-		elseif self.MOUNT[itemID] then
+		elseif __.MOUNT[itemID] then
 			tinsert(sortKey, 2)
 
 		-- special items
-		elseif self.SPECIAL[itemID] then
+		elseif __.SPECIAL[itemID] then
 			tinsert(sortKey, 3)
 
 		-- key items
-		elseif self.KEY[itemID] then
+		elseif __.KEY[itemID] then
 			tinsert(sortKey, 4)
 
 		-- tools
-		elseif self.TOOL[itemID] then
+		elseif __.TOOL[itemID] then
 			tinsert(sortKey, 5)
 
 		-- conjured items
@@ -601,7 +605,7 @@ function Clean_Up:Content(container, position)
 			tinsert(sortKey, 6)
 
 		-- reagents
-		elseif itemClass == self.ITEM_CLASSES[9] then
+		elseif itemClass == __.ITEM_TYPES[9] then
 			tinsert(sortKey, 7)
 
 		-- quest items
@@ -609,7 +613,7 @@ function Clean_Up:Content(container, position)
 			tinsert(sortKey, 9)
 
 		-- consumables
-		elseif usable and itemClass ~= self.ITEM_CLASSES[1] and itemClass ~= self.ITEM_CLASSES[2] and itemClass ~= self.ITEM_CLASSES[8] or itemClass == self.ITEM_CLASSES[4] then
+		elseif usable and itemClass ~= __.ITEM_TYPES[1] and itemClass ~= __.ITEM_TYPES[2] and itemClass ~= __.ITEM_TYPES[8] or itemClass == __.ITEM_TYPES[4] then
 			tinsert(sortKey, 8)
 
 		-- higher quality
@@ -625,17 +629,17 @@ function Clean_Up:Content(container, position)
 			tinsert(sortKey, 12)
 		end
 		
-		tinsert(sortKey, self:ItemClassKey(itemClass))
-		tinsert(sortKey, self:ItemSlotKey(itemClass, itemSubClass, itemEquipLoc))
-		tinsert(sortKey, self:ItemSubClassKey(itemClass, itemSubClass))
+		tinsert(sortKey, __.ItemTypeKey(itemClass))
+		tinsert(sortKey, __.ItemSlotKey(itemClass, itemSubClass, itemEquipLoc))
+		tinsert(sortKey, __.ItemSubTypeKey(itemClass, itemSubClass))
 		tinsert(sortKey, itemName)
 		tinsert(sortKey, 1/charges)
 
 		return {
 			sortKey = sortKey,
-			item = self:ItemKey(link, charges),
-			capacity = itemStack,
-			amount = count,
+			item = __.ItemKey(link, charges),
+			stack = itemStack,
+			count = count,
 		}
 	end
 end
