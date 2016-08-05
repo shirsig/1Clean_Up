@@ -35,20 +35,19 @@ function __.ADDON_LOADED()
 		return
 	end
 
-	__:RegisterEvent('UI_ERROR_MESSAGE')
 	__:RegisterEvent('MERCHANT_SHOW')
 	__:RegisterEvent('MERCHANT_CLOSED')
 
 	__.CLASSES = {
 		-- arrow
 		{
-			containers = {2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320},
+			containers = {2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714},
 			items = __.Set(2512, 2515, 3030, 3464, 9399, 11285, 12654, 18042, 19316),
 		},
 		
 		-- bullet
 		{
-			containers = {2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714},
+			containers = {2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320},
 			items = __.Set(2516, 2519, 3033, 3465, 4960, 5568, 8067, 8068, 8069, 10512, 10513, 11284, 11630, 13377, 15997, 19317),
 		},
 
@@ -142,18 +141,6 @@ function __.UPDATE()
 	end
 
 	__.Stack()
-end
-
-function __.UI_ERROR_MESSAGE()
-	if __:IsVisible() then
-		if arg1 == BAG_ITEM_CLASS_MISMATCH then
-			__.Log('Invalid item assignment', 1, 0, 0)
-			__:Hide()
-		elseif arg1 == BAG_ERROR then
-			__.Log('Unknown error', 1, 0, 0)
-			__:Hide()
-		end
-	end
 end
 
 function __.MERCHANT_SHOW()
@@ -355,7 +342,7 @@ function __.TooltipInfo(container, position)
 
 	local charges, usable, soulbound, quest, conjured
 	for i=1,Clean_Up_Tooltip:NumLines() do
-		local text = getglobal('Clean_Up_TooltipTextLeft'..i):GetText() -- TODO
+		local text = getglobal('Clean_Up_TooltipTextLeft'..i):GetText()
 
 		local _, _, chargeString = strfind(text, chargesPattern)
 		if chargeString then
@@ -470,7 +457,9 @@ do
 	local function assignCustom()
 		for _, slot in __.model do
 			for _, item in {Clean_Up_Assignments[__.SlotKey(slot.container, slot.position)]} do
-				assign(slot, item)
+				if counts[item] then
+					assign(slot, item)
+				end
 			end
 		end
 	end
@@ -491,7 +480,7 @@ do
 
 	local function assignRemaining()
 		for _, slot in __.model do
-			if not slot.item then
+			if not slot.class and not slot.item then
 				for _, item in items do
 					if assign(slot, item) then
 						break
@@ -568,6 +557,7 @@ do
 	function __.Item(container, position)
 		for _, link in {GetContainerItemLink(container, position)} do
 			local _, _, itemID, enchantID, suffixID, uniqueID = strfind(link, 'item:(%d+):(%d*):(%d*):(%d*)')
+			itemID = tonumber(itemID)
 			local _, _, quality, _, type, subType, stack, invType = GetItemInfo(itemID)
 			local charges, usable, soulbound, quest, conjured = __.TooltipInfo(container, position)
 
