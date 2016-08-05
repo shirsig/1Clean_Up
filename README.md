@@ -33,7 +33,10 @@ When holding down the **Alt-key** you can **drag** the buttons to position them 
 **Alt-right-click** on a bag slot will clear its assignment.
 
 ### Sort order
-The primary sort order is:
+
+The highest priority are the custom assignments. The second highest is to fill special bags (e.g., herb bag).
+
+Besides that, the primary sort order is:
 
 **hearthstone**<br/>
 **mounts**<br/>
