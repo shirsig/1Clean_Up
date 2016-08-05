@@ -331,7 +331,7 @@ function __.Move(src, dst)
 				src.state.count = src.state.count - count
 				dst.state.count = dst.state.count + count
 				if src.count == 0 then
--- TODO
+					src.state = nil
 				end
 			else
 				src.state, dst.state = dst.state, src.state
@@ -379,15 +379,6 @@ function __.TooltipInfo(container, position)
 	return charges or 1, usable, soulbound, conjured
 end
 
-local targets_mt = {
-	__newindex = function(self, slot, task)
-		rawset(self, __.SlotKey(slot()), task)
-	end,
-	__index = function(self, slot)
-		return rawget(self, __.SlotKey(slot()))
-	end,
-}
-
 function __.Trash(container, position)
 	for itemID in string.gfind(GetContainerItemLink(container, position) or '', 'item:(%d+)') do
 		if ({GetItemInfo(itemID)})[3] == 0 then
@@ -415,17 +406,17 @@ function __.Sort()
 	local complete = true
 
 	for _, dst in __.model do
-		if dst.task and (dst.state.item ~= dst.task.item or dst.state.item == dst.task.item and dst.state.count < dst.task.count) then
+		if dst.item and (dst.state.item ~= dst.item or dst.state.item == dst.item and dst.state.count < dst.count) then
 			complete = false
 
 			local sources, rank = {}, {}
 
 			for _, src in __.model do
-				if not (src.task and src.state.item == src.task.item and src.state.count <= src.task.count)
+				if not (src.item and src.state.item == src.item and src.state.count <= src.count)
 						and src ~= dst
-						and src.state.item == dst.task.item
+						and src.state.item == dst.item
 				then
-					rank[src] = abs(src.state.count - dst.task.count + (task.slot.state.item == dst.task.item and dst.state.count or 0))
+					rank[src] = abs(src.state.count - dst.count + (dst.state.item == dst.item and dst.state.count or 0))
 					tinsert(sources, src)
 				end
 			end
@@ -460,14 +451,10 @@ function __.Go()
 	__.Show()
 end
 
-function __.CreateTask(slot, item)
+function __.Assign(slot, item)
 	local count = min(item.count, item.stack)
-	slot.task = {
-		item = item.key,
-		slot = slot,
-		count = count,
-	}
-	tinsert(__.model.tasks, slot.task)
+	slot.item = item.key
+	slot.count = count{
 	item.count = item.count - count
 end
 
@@ -500,10 +487,10 @@ function __.CreateModel(containers)
 		end
 	end
 
-	for _, slot in slots do
-		for _, itemKey in {Clean_Up_Assignments[slot]} do
+	for _, slot in __.model do
+		for _, itemKey in {Clean_Up_Assignments[__.SlotKey(slot())]} do
 			for _, item in {items[itemKey]} do
-				__.CreateTask(slot, item)
+				__.Assign(slot, item)
 				if item.count == 0 then
 					items[itemKey] == nil
 				end
@@ -520,8 +507,8 @@ function __.CreateModel(containers)
 	for _, slot in groups._ do
 		if not items[1] then
 			break
-		elseif not slot.task then
-			__.CreateTask(slot, item)
+		elseif not slot.item then
+			__.Assign(slot, item)
 			if item.count == 0 do
 				tremove(items, 1)
 	        end
