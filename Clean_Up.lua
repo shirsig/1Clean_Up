@@ -43,34 +43,43 @@ function __.ADDON_LOADED()
 		-- arrow
 		{
 			containers = {2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320},
-			items = __.Set(),
+			items = __.Set(2512, 2515, 3030, 3464, 9399, 11285, 12654, 18042, 19316),
 		},
 		
 		-- bullet
 		{
 			containers = {2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714},
-			items = __.Set(),
+			items = __.Set(2516, 2519, 3033, 3465, 4960, 5568, 8067, 8068, 8069, 10512, 10513, 11284, 11630, 13377, 15997, 19317),
 		},
 
 		-- soul
 		{
 			containers = {22243, 22244, 21340, 21341, 21342},
-			items = __.Set(),
+			items = __.Set(6265),
 		},
 
 		-- ench
 		{
 			containers = {22246, 22248, 22249},
-			items = __.Set(),
+			items = __.Set(
+				-- dust
+				10940, 11083, 11137, 11176, 16204,
+				-- essence
+				10938, 10939, 10998, 11082, 11134, 11135, 11174, 11175, 16202, 16203,
+				--shard
+				10978, 11084, 11138, 11139, 11177, 11178, 14343, 14344,
+				-- crystal
+				20725,
+				--rod
+				6218, 6339, 11130, 11145, 16207
+			),
 		},
 
 		-- herb
 		{
 			containers = {22250, 22251, 22252},
-			items = __.Set(),
+			items = __.Set(765, 785, 2447, 2449, 2450, 2452, 2453, 3355, 3356, 3357, 3358, 3369, 3818, 3819, 3820, 3821, 4625, 8831, 8836, 8838, 8839, 8845, 8846, 13463, 13464, 13465, 13466, 13467, 13468),
 		},
-
-		_ = {containers = {}, items = {}},
 	}
 
 	__.MOUNT = __.Set(
@@ -136,7 +145,7 @@ function __.UPDATE()
 end
 
 function __.UI_ERROR_MESSAGE()
-	if self.Inbox_Opening then
+	if __:IsVisible() then
 		if arg1 == BAG_ITEM_CLASS_MISMATCH then
 			__.Log('Invalid item assignment', 1, 0, 0)
 			__:Hide()
@@ -193,22 +202,16 @@ function __.SlotKey(container, position)
 	return container..':'..position
 end
 
-function __.ItemKey(container, position)
-	for _, link in {GetContainerItemLink(container, position)} do
-		return link..(__.TooltipInfo(container, position).charges or '')
-	end
-end
-
 function __.SetupHooks()
 
 	__.PickupContainerItem = PickupContainerItem
 	function PickupContainerItem(...)
 		local container, position = unpack(arg)
 		if IsAltKeyDown() then
-			for _, itemKey in {__.ItemKey(container, position)} do
+			for _, item in {__.Item(container, position)} do
 				local slotKey = __.SlotKey(container, position)
-				Clean_Up_Assignments[slotKey] = itemKey
-				__.Log(slotKey..' assigned to '..itemKey)
+				Clean_Up_Assignments[slotKey] = item
+				__.Log(slotKey..' assigned to '..item)
 			end
 		else
 			__.PickupContainerItem(unpack(arg))
@@ -311,23 +314,23 @@ function __.CreateButton(name)
 end
 
 function __.Move(src, dst)
-    local _, _, srcLocked = GetContainerItemInfo(src())
-    local _, _, dstLocked = GetContainerItemInfo(dst())
+    local _, _, srcLocked = GetContainerItemInfo(src.container, src.position)
+    local _, _, dstLocked = GetContainerItemInfo(dst.container, dst.position)
     
 	if not srcLocked and not dstLocked then
 		ClearCursor()
-       	PickupContainerItem(src())
-		PickupContainerItem(dst())
+       	PickupContainerItem(src.container, src.position)
+		PickupContainerItem(dst.container, dst.position)
 
-	    local _, _, srcLocked = GetContainerItemInfo(src())
-	    local _, _, dstLocked = GetContainerItemInfo(dst())
+	    local _, _, srcLocked = GetContainerItemInfo(src.container, src.position)
+	    local _, _, dstLocked = GetContainerItemInfo(dst.container, dst.position)
     	if srcLocked or dstLocked then
 			if src.state.item == dst.state.item then
-				local count = min(src.state.count, dst.state.item.stack - dst.state.count)
+				local count = min(src.state.count, __.MaxStack(dst.state.item) - dst.state.count)
 				src.state.count = src.state.count - count
 				dst.state.count = dst.state.count + count
 				if src.count == 0 then
-					src.state.item = {}
+					src.state.item = nil
 				end
 			else
 				src.state, dst.state = dst.state, src.state
@@ -368,13 +371,7 @@ function __.TooltipInfo(container, position)
 		end
 	end
 
-	return {
-		charges = charges,
-		usable = usable,
-		soulbound = soulbound,
-		quest = quest,
-		conjured = conjured,
-	}
+	return charges or 1, usable, soulbound, quest, conjured
 end
 
 function __.Trash(container, position)
@@ -410,9 +407,9 @@ function __.Sort()
 			local sources, rank = {}, {}
 
 			for _, src in __.model do
-				if not (src.item and src.state.item == src.item and src.state.count <= src.count)
-						and src ~= dst
-						and src.state.item == dst.item
+				if src.state.item == dst.item
+					and src ~= dst
+					and not (src.item and src.state.item == src.item and src.state.count <= src.count)
 				then
 					rank[src] = abs(src.state.count - dst.count + (dst.state.item == dst.item and dst.state.count or 0))
 					tinsert(sources, src)
@@ -434,9 +431,9 @@ end
 
 function __.Stack()
 	for _, src in __.model do
-		if src.state.count < src.state.item.stack then
+		if src.state.item and src.state.count < __.MaxStack(src.state.item) then
 			for _, dst in __.model do
-				if dst.state.count < dst.state.item.stack and src.state.item == dst.state.item and src ~= dst then
+				if dst ~= src and dst.state.item and dst.state.item == src.state.item and dst.state.count < __.MaxStack(dst.state.item) then
 					__.Move(src, dst)
 				end
 			end
@@ -449,179 +446,212 @@ function __.Go()
 	__:Show()
 end
 
-function __.Assign(slot, content)
-	local count = min(content.count, content.item.stack)
-	slot.item = content.item
-	slot.count = count
-	content.count = content.count - count
-end
+do
+	local items, counts
 
-function __.CreateModel()
-	__.model = {}
-	local contents, groups = {}, {}
-	for key in __.CLASSES do
-    	groups[key] = {}
+	local function insert(t, v)
+		if Clean_Up_Reversed then
+			tinsert(t, v)
+		else
+			tinsert(t, 1, v)
+		end
 	end
 
-	local function insert(t, v) if Clean_Up_Reversed then tinsert(t, v) else tinsert(t, 1, v) end end
-	for _, container in __.containers do
-		if GetContainerNumSlots(container) > 0 then -- TODO
-			local group = groups[__.ClassKey(container)]
-			for position=1,GetContainerNumSlots(container) do
+	local function assign(slot, item)
+		if counts[item] > 0 then
+			local count = min(counts[item], __.MaxStack(item))
+			slot.item = item
+			slot.count = count
+			counts[item] = counts[item] - count
+			return true
+		end
+	end
 
-				local slot = __.Slot(container, position)
-				for _, itemKey in {__.ItemKey(container, position)} do
-					contents[itemKey] = contents[itemKey] or {
-						item = __.Item(container, position),
-						count = 0,
-					}
-					local _, count = GetContainerItemInfo(container, position)
-					contents[itemKey].count = contents[itemKey].count + count
-					slot.state = {
-						item = contents[itemKey].item,
-						count = count,
-					}
-				end
-				slot.state = slot.state or {item={stack=0}, count=0}
-				insert(__.model, slot)
-				insert(group, slot)
+	local function assignCustom()
+		for _, slot in __.model do
+			for _, item in {Clean_Up_Assignments[__.SlotKey(slot.container, slot.position)]} do
+				assign(slot, item)
 			end
 		end
 	end
 
-	for _, slot in __.model do
-		for _, itemKey in {Clean_Up_Assignments[__.SlotKey(slot())]} do
-			for _, content in {contents[itemKey]} do
-				__.Assign(slot, content)
-				if content.count == 0 then
-					contents[itemKey] = nil
-				end
-			end	
+	local function assignSpecial()
+		for key, class in __.CLASSES do
+			for _, slot in __.model do
+				if slot.class == key and not slot.item then
+					for _, item in items do
+						if __.Class(item) == key and assign(slot, item) then
+							break
+						end
+				    end
+			    end
+			end
 		end
 	end
 
-	local contents, temp = {}, contents
-	for _, content in temp do
-		tinsert(contents, content)
+	local function assignRemaining()
+		for _, slot in __.model do
+			if not slot.item then
+				for _, item in items do
+					if assign(slot, item) then
+						break
+					end
+			    end
+		    end
+		end
 	end
-	sort(contents, function(a, b) return __.LT(a.item.sortKey, b.item.sortKey) end)
 
-	for _, slot in groups._ do
-		if not contents[1] then
-			break
-		elseif not slot.item then
-			__.Assign(slot, contents[1])
-			if contents[1].count == 0 then
-				tremove(contents, 1)
-	        end
-	    end
+	function __.CreateModel()
+		__.model = {}
+		counts = {}
+
+		for _, container in __.containers do
+			local class = __.ContainerClass(container)
+			for position=1,GetContainerNumSlots(container) do
+				local slot = {container=container, position=position, class=class}
+				local item = __.Item(container, position)
+				if item then
+					local _, count = GetContainerItemInfo(container, position)
+					slot.state = {item=item, count=count}
+					counts[item] = (counts[item] or 0) + count
+				else
+					slot.state = {}
+				end
+				insert(__.model, slot)
+			end
+		end
+		items = {}
+		for item, _ in counts do
+			tinsert(items, item)
+		end
+		sort(items, function(a, b) return __.LT(__.SortKey(a), __.SortKey(b)) end)
+
+		assignCustom()
+		assignSpecial()
+		assignRemaining()
 	end
 end
 
 do
 	local cache = {}
-	function __.ClassKey(container)
-		if not cache[container] then
-			for _, name in {container ~= 0 and GetBagName(container)} do			
-				for key, class in __.CLASSES do
-					for _, itemID in class.containers do
+	function __.ContainerClass(container)
+		if not cache[container] and container ~= 0 and container ~= BANK_CONTAINER then
+			for _, name in {GetBagName(container)} do		
+				for class, info in __.CLASSES do
+					for _, itemID in info.containers do
 						if name == GetItemInfo(itemID) then
-							cache[container] = key
+							cache[container] = class
 						end
 					end	
 				end
-				cache[container] = cache[container] or '_'
 			end
 		end
-		return cache[container] or '_'
+		return cache[container]
 	end
 end
 
 do
-	local slot_mt = {
-		__call = function(self, ...)
-			return self.container, self.position
-		end,		
-	}
+	local cache = {}
 
-	function __.Slot(container, position)
-		return setmetatable({
-			container = container,
-			position = position,
-		}, slot_mt)
+	function __.Class(item)
+		return cache[item].class
 	end
-end
 
-function __.Item(container, position)
-	local link = GetContainerItemLink(container, position)
-	local itemID = tonumber(({strfind(link, 'item:(%d+)')})[3])
-
-	local itemName, _, itemRarity, itemMinLevel, itemClass, itemSubClass, itemStack, itemEquipLoc = GetItemInfo(itemID)
-	local tooltipInfo = __.TooltipInfo(container, position)
-
-	local sortKey = {}
-
-	-- hearthstone
-	if itemID == 6948 then
-		tinsert(sortKey, 1)
-
-	-- mounts
-	elseif __.MOUNT[itemID] then
-		tinsert(sortKey, 2)
-
-	-- special items
-	elseif __.SPECIAL[itemID] then
-		tinsert(sortKey, 3)
-
-	-- key items
-	elseif __.KEY[itemID] then
-		tinsert(sortKey, 4)
-
-	-- tools
-	elseif __.TOOL[itemID] then
-		tinsert(sortKey, 5)
-
-	-- conjured items
-	elseif tooltipInfo.conjured then
-		tinsert(sortKey, 13)
-
-	-- soulbound items
-	elseif tooltipInfo.soulbound then
-		tinsert(sortKey, 6)
-
-	-- reagents
-	elseif itemClass == __.ITEM_TYPES[9] then
-		tinsert(sortKey, 7)
-
-	-- quest items
-	elseif tooltipInfo.quest then
-		tinsert(sortKey, 9)
-
-	-- consumables
-	elseif tooltipInfo.usable and itemClass ~= __.ITEM_TYPES[1] and itemClass ~= __.ITEM_TYPES[2] and itemClass ~= __.ITEM_TYPES[8] or itemClass == __.ITEM_TYPES[4] then
-		tinsert(sortKey, 8)
-
-	-- higher quality
-	elseif itemRarity > 1 then
-		tinsert(sortKey, 10)
-
-	-- common quality
-	elseif itemRarity == 1 then
-		tinsert(sortKey, 11)
-
-	-- junk
-	elseif itemRarity == 0 then
-		tinsert(sortKey, 12)
+	function __.MaxStack(item)
+		return cache[item].stack
 	end
-	
-	tinsert(sortKey, __.ItemTypeKey(itemClass))
-	tinsert(sortKey, __.ItemInvTypeKey(itemClass, itemSubClass, itemEquipLoc))
-	tinsert(sortKey, __.ItemSubTypeKey(itemClass, itemSubClass))
-	tinsert(sortKey, itemName)
-	tinsert(sortKey, 1/(tooltipInfo.charges or 1))
 
-	return {
-		sortKey = sortKey,
-		stack = itemStack,
-	}
+	function __.SortKey(item)
+		return cache[item].sortKey
+	end
+
+	function __.Item(container, position)
+		for _, link in {GetContainerItemLink(container, position)} do
+			local _, _, itemID, enchantID, suffixID, uniqueID = strfind(link, 'item:(%d+):(%d*):(%d*):(%d*)')
+			local _, _, quality, _, type, subType, stack, invType = GetItemInfo(itemID)
+			local charges, usable, soulbound, quest, conjured = __.TooltipInfo(container, position)
+
+			local key = format('%s:%s:%s:%s:%s:%s', itemID, enchantID, suffixID, uniqueID, charges, (soulbound and 1 or 0))
+
+			if not cache[key] then
+
+				local sortKey = {}
+
+				-- hearthstone
+				if itemID == 6948 then
+					tinsert(sortKey, 1)
+
+				-- mounts
+				elseif __.MOUNT[itemID] then
+					tinsert(sortKey, 2)
+
+				-- special items
+				elseif __.SPECIAL[itemID] then
+					tinsert(sortKey, 3)
+
+				-- key items
+				elseif __.KEY[itemID] then
+					tinsert(sortKey, 4)
+
+				-- tools
+				elseif __.TOOL[itemID] then
+					tinsert(sortKey, 5)
+
+				-- conjured items
+				elseif conjured then
+					tinsert(sortKey, 13)
+
+				-- soulbound items
+				elseif soulbound then
+					tinsert(sortKey, 6)
+
+				-- reagents
+				elseif type == __.ITEM_TYPES[9] then
+					tinsert(sortKey, 7)
+
+				-- quest items
+				elseif quest then
+					tinsert(sortKey, 9)
+
+				-- consumables
+				elseif usable and type ~= __.ITEM_TYPES[1] and type ~= __.ITEM_TYPES[2] and type ~= __.ITEM_TYPES[8] or type == __.ITEM_TYPES[4] then
+					tinsert(sortKey, 8)
+
+				-- higher quality
+				elseif quality > 1 then
+					tinsert(sortKey, 10)
+
+				-- common quality
+				elseif quality == 1 then
+					tinsert(sortKey, 11)
+
+				-- junk
+				elseif quality == 0 then
+					tinsert(sortKey, 12)
+				end
+				
+				tinsert(sortKey, __.ItemTypeKey(type))
+				tinsert(sortKey, __.ItemInvTypeKey(type, subType, invType))
+				tinsert(sortKey, __.ItemSubTypeKey(type, subType))
+				tinsert(sortKey, itemID)
+				tinsert(sortKey, 1/charges)
+				tinsert(sortKey, suffixID)
+				tinsert(sortKey, enchantID)
+				tinsert(sortKey, uniqueID)
+
+				cache[key] = {
+					stack = stack,
+					sortKey = sortKey,
+				}
+
+				for class, info in __.CLASSES do
+					if info.items[itemID] then
+						cache[key].class = class
+					end
+				end
+			end
+
+			return key
+		end
+	end
 end
