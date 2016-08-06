@@ -388,7 +388,7 @@ function __.Sort()
 	local complete = true
 
 	for _, dst in __.model do
-		if dst.item and (dst.state.item ~= dst.item or dst.state.item == dst.item and dst.state.count < dst.count) then
+		if dst.item and (dst.state.item ~= dst.item or dst.state.count < dst.count) then
 			complete = false
 
 			local sources, rank = {}, {}
