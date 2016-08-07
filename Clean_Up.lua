@@ -205,17 +205,46 @@ function __.SetupHooks()
 		end
 	end
 
-	__.UseContainerItem = UseContainerItem
-	function UseContainerItem(...)
-		local container, position = unpack(arg)
-		if IsAltKeyDown() then
+    do
+        local lastTime, lastX, lastY, lastSlot
+		__.UseContainerItem = UseContainerItem
+		function UseContainerItem(...)
+			local container, position = unpack(arg)
 			local slotKey = __.SlotKey(container, position)
-			if Clean_Up_Assignments[slotKey] then
-				Clean_Up_Assignments[slotKey] = nil
-				__.Log(slotKey..' freed')
+			if IsAltKeyDown() then
+				if Clean_Up_Assignments[slotKey] then
+					Clean_Up_Assignments[slotKey] = nil
+					__.Log(slotKey..' freed')
+				end
+			else
+				local x, y = GetCursorPosition()
+				if lastTime and GetTime() - lastTime < .5 and x == lastX and y == lastY and slotKey == lastSlot then
+					last_time = nil
+
+					local containers
+					for _, bagsContainer in __.BAGS do
+						if container == bagsContainer then
+							containers = __.BAGS
+							break
+						end
+					end
+					containers = containers or __.BANK
+					local link = GetContainerItemLink(container, position)
+					for _, container in containers do
+						for position=1,GetContainerNumSlots(container) do
+							if GetContainerItemLink(container, position) == link then
+								arg[1], arg[2] = container, position
+								__.UseContainerItem(unpack(arg))
+							end
+						end
+					end
+				else
+					lastTime = GetTime()
+                	lastX, lastY = x, y
+                	lastSlot = slotKey
+					__.UseContainerItem(unpack(arg))
+				end
 			end
-		else
-			__.UseContainerItem(unpack(arg))
 		end
 	end
 end
