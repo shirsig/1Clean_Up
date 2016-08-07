@@ -425,7 +425,7 @@ function __.Sort()
 			for _, src in __.model do
 				if src.state.item == dst.item
 					and src ~= dst
-					and not (dst.state.item and __.Class(src.state.item) ~= __.Class(dst.state.item))
+					and not (dst.state.item and src.class and src.class ~= __.Class(dst.state.item))
 					and not (src.item and src.state.item == src.item and src.state.count <= src.count)
 				then
 					rank[src] = abs(src.state.count - dst.count + (dst.state.item == dst.item and dst.state.count or 0))
