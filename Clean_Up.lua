@@ -165,10 +165,10 @@ function __.PLAYER_LOGIN()
 					end
 					containers = containers or __.BANK
 					local link = GetContainerItemLink(container, position)
-					for _, container in containers do
-						for position=1,GetContainerNumSlots(container) do
-							if GetContainerItemLink(container, position) == link then
-								arg[1], arg[2] = container, position
+					for _, otherContainer in containers do
+						for otherPosition=1,GetContainerNumSlots(otherContainer) do
+							if not (otherContainer == container and otherPosition == position) and GetContainerItemLink(otherContainer, otherPosition) == link then
+								arg[1], arg[2] = otherContainer, otherPosition
 								__.UseContainerItem(unpack(arg))
 							end
 						end
