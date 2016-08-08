@@ -35,6 +35,7 @@ function __.ADDON_LOADED()
 		return
 	end
 
+	__:RegisterEvent('VARIABLES_LOADED')
 	__:RegisterEvent('MERCHANT_SHOW')
 	__:RegisterEvent('MERCHANT_CLOSED')
 
@@ -116,13 +117,71 @@ function __.ADDON_LOADED()
 
 	__.TOOL = __.Set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
 
-	__.SetupHooks()
 	__.SetupSlash()
 
 	CreateFrame('GameTooltip', 'Clean_Up_Tooltip', nil, 'GameTooltipTemplate')
 
 	__.CreateButton('Bags')
 	__.CreateButton('Bank')
+end
+
+function __.VARIABLES_LOADED()
+	__.PickupContainerItem = PickupContainerItem
+	function PickupContainerItem(...)
+		local container, position = unpack(arg)
+		if IsAltKeyDown() then
+			for _, item in {__.Item(container, position)} do
+				local slotKey = __.SlotKey(container, position)
+				Clean_Up_Assignments[slotKey] = item
+				__.Log(slotKey..' assigned to '..item)
+			end
+		else
+			__.PickupContainerItem(unpack(arg))
+		end
+	end
+
+    do
+        local lastTime, lastX, lastY, lastSlot
+		__.UseContainerItem = UseContainerItem
+		function UseContainerItem(...)
+			local container, position = unpack(arg)
+			local slotKey = __.SlotKey(container, position)
+			if IsAltKeyDown() then
+				if Clean_Up_Assignments[slotKey] then
+					Clean_Up_Assignments[slotKey] = nil
+					__.Log(slotKey..' freed')
+				end
+			else
+				local x, y = GetCursorPosition()
+				if lastTime and GetTime() - lastTime < .5 and x == lastX and y == lastY and slotKey == lastSlot then
+					last_time = nil
+
+					local containers
+					for _, bagsContainer in __.BAGS do
+						if container == bagsContainer then
+							containers = __.BAGS
+							break
+						end
+					end
+					containers = containers or __.BANK
+					local link = GetContainerItemLink(container, position)
+					for _, container in containers do
+						for position=1,GetContainerNumSlots(container) do
+							if GetContainerItemLink(container, position) == link then
+								arg[1], arg[2] = container, position
+								__.UseContainerItem(unpack(arg))
+							end
+						end
+					end
+				else
+					lastTime = GetTime()
+                	lastX, lastY = x, y
+                	lastSlot = slotKey
+					__.UseContainerItem(unpack(arg))
+				end
+			end
+		end
+	end
 end
 
 function __.UPDATE()
@@ -187,66 +246,6 @@ end
 
 function __.SlotKey(container, position)
 	return container..':'..position
-end
-
-function __.SetupHooks()
-
-	__.PickupContainerItem = PickupContainerItem
-	function PickupContainerItem(...)
-		local container, position = unpack(arg)
-		if IsAltKeyDown() then
-			for _, item in {__.Item(container, position)} do
-				local slotKey = __.SlotKey(container, position)
-				Clean_Up_Assignments[slotKey] = item
-				__.Log(slotKey..' assigned to '..item)
-			end
-		else
-			__.PickupContainerItem(unpack(arg))
-		end
-	end
-
-    do
-        local lastTime, lastX, lastY, lastSlot
-		__.UseContainerItem = UseContainerItem
-		function UseContainerItem(...)
-			local container, position = unpack(arg)
-			local slotKey = __.SlotKey(container, position)
-			if IsAltKeyDown() then
-				if Clean_Up_Assignments[slotKey] then
-					Clean_Up_Assignments[slotKey] = nil
-					__.Log(slotKey..' freed')
-				end
-			else
-				local x, y = GetCursorPosition()
-				if lastTime and GetTime() - lastTime < .5 and x == lastX and y == lastY and slotKey == lastSlot then
-					last_time = nil
-
-					local containers
-					for _, bagsContainer in __.BAGS do
-						if container == bagsContainer then
-							containers = __.BAGS
-							break
-						end
-					end
-					containers = containers or __.BANK
-					local link = GetContainerItemLink(container, position)
-					for _, container in containers do
-						for position=1,GetContainerNumSlots(container) do
-							if GetContainerItemLink(container, position) == link then
-								arg[1], arg[2] = container, position
-								__.UseContainerItem(unpack(arg))
-							end
-						end
-					end
-				else
-					lastTime = GetTime()
-                	lastX, lastY = x, y
-                	lastSlot = slotKey
-					__.UseContainerItem(unpack(arg))
-				end
-			end
-		end
-	end
 end
 
 function __.SetupSlash()
