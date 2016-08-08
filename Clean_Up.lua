@@ -152,7 +152,7 @@ function __.MERCHANT_CLOSED()
 end
 
 function __.Log(msg)
-	DEFAULT_CHAT_FRAME:AddMessage('[Clean Up] '..tostring(msg), 1, 1, 0)
+	DEFAULT_CHAT_FRAME:AddMessage(LIGHTYELLOW_FONT_COLOR_CODE..'[Clean Up] '..msg)
 end
 
 function __.Set(...)
