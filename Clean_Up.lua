@@ -35,7 +35,7 @@ function __.ADDON_LOADED()
 		return
 	end
 
-	__:RegisterEvent('VARIABLES_LOADED')
+	__:RegisterEvent('PLAYER_LOGIN')
 	__:RegisterEvent('MERCHANT_SHOW')
 	__:RegisterEvent('MERCHANT_CLOSED')
 
@@ -125,7 +125,7 @@ function __.ADDON_LOADED()
 	__.CreateButton('Bank')
 end
 
-function __.VARIABLES_LOADED()
+function __.PLAYER_LOGIN()
 	__.PickupContainerItem = PickupContainerItem
 	function PickupContainerItem(...)
 		local container, position = unpack(arg)
