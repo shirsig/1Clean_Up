@@ -1,67 +1,66 @@
-local __ = CreateFrame('Frame')
-__:Hide()
-__:SetScript('OnUpdate', function()
-	this.UPDATE()
+local self = CreateFrame('Frame')
+self:Hide()
+self:SetScript('OnUpdate', function()
+	this:UPDATE()
 end)
-__:SetScript('OnEvent', function()
-	this[event]()
+self:SetScript('OnEvent', function()
+	this[event](this)
 end)
-__:RegisterEvent('ADDON_LOADED')
+self:RegisterEvent('ADDON_LOADED')
+self:RegisterEvent('PLAYER_LOGIN')
+self:RegisterEvent('MERCHANT_SHOW')
+self:RegisterEvent('MERCHANT_CLOSED')
 
 Clean_Up_Bags = {parent='ContainerFrame1', position={0, 0}}
 Clean_Up_Bank = {parent='BankFrame', position={0, 0}}
 Clean_Up_Reversed = false
 Clean_Up_Assignments = {}
 
-__.BAGS = {0, 1, 2, 3, 4}
-__.BANK = {-1, 5, 6, 7, 8, 9, 10}
+self.BAGS = {0, 1, 2, 3, 4}
+self.BANK = {-1, 5, 6, 7, 8, 9, 10}
 
-__.ITEM_TYPES = {GetAuctionItemClasses()}
+self.ITEM_TYPES = {GetAuctionItemClasses()}
 
-function __.ItemTypeKey(itemClass)
-	return __.Key(__.ITEM_TYPES, itemClass) or 0
+function self:ItemTypeKey(itemClass)
+	return self:Key(self.ITEM_TYPES, itemClass) or 0
 end
 
-function __.ItemSubTypeKey(itemClass, itemSubClass)
-	return __.Key({GetAuctionItemSubClasses(__.ItemTypeKey(itemClass))}, itemClass) or 0
+function self:ItemSubTypeKey(itemClass, itemSubClass)
+	return self:Key({GetAuctionItemSubClasses(self:ItemTypeKey(itemClass))}, itemClass) or 0
 end
 
-function __.ItemInvTypeKey(itemClass, itemSubClass, itemSlot)
-	return __.Key({GetAuctionInvTypes(__.ItemTypeKey(itemClass), __.ItemSubTypeKey(itemSubClass))}, itemSlot) or 0
+function self:ItemInvTypeKey(itemClass, itemSubClass, itemSlot)
+	return self:Key({GetAuctionInvTypes(self:ItemTypeKey(itemClass), self:ItemSubTypeKey(itemSubClass))}, itemSlot) or 0
 end
 
-function __.ADDON_LOADED()
+function self.ADDON_LOADED()
 	if arg1 ~= 'Clean_Up' then
 		return
 	end
 
-	__:RegisterEvent('PLAYER_LOGIN')
-	__:RegisterEvent('MERCHANT_SHOW')
-	__:RegisterEvent('MERCHANT_CLOSED')
-
-	__.CLASSES = {
+	self.CLASSES = {
 		-- arrow
 		{
 			containers = {2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714},
-			items = __.Set(2512, 2515, 3030, 3464, 9399, 11285, 12654, 18042, 19316),
+			items = self:Set(2512, 2515, 3030, 3464, 9399, 11285, 12654, 18042, 19316),
 		},
 		
 		-- bullet
 		{
 			containers = {2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320},
-			items = __.Set(2516, 2519, 3033, 3465, 4960, 5568, 8067, 8068, 8069, 10512, 10513, 11284, 11630, 13377, 15997, 19317),
+			items = self:Set(2516, 2519, 3033, 3465, 4960, 5568, 8067, 8068, 8069, 10512, 10513, 11284, 11630, 13377, 15997, 19317),
 		},
 
 		-- soul
 		{
 			containers = {22243, 22244, 21340, 21341, 21342},
-			items = __.Set(6265),
+			items = self:Set(6265),
 		},
 
 		-- ench
 		{
 			containers = {22246, 22248, 22249},
-			items = __.Set(
+			items = self:Set(
 				-- dust
 				10940, 11083, 11137, 11176, 16204,
 				-- essence
@@ -78,11 +77,11 @@ function __.ADDON_LOADED()
 		-- herb
 		{
 			containers = {22250, 22251, 22252},
-			items = __.Set(765, 785, 2447, 2449, 2450, 2452, 2453, 3355, 3356, 3357, 3358, 3369, 3818, 3819, 3820, 3821, 4625, 8831, 8836, 8838, 8839, 8845, 8846, 13463, 13464, 13465, 13466, 13467, 13468),
+			items = self:Set(765, 785, 2447, 2449, 2450, 2452, 2453, 3355, 3356, 3357, 3358, 3369, 3818, 3819, 3820, 3821, 4625, 8831, 8836, 8838, 8839, 8845, 8846, 13463, 13464, 13465, 13466, 13467, 13468),
 		},
 	}
 
-	__.MOUNT = __.Set(
+	self.MOUNT = self:Set(
 		-- rams
 		5864, 5872, 5873, 18785, 18786, 18787, 18244, 19030, 13328, 13329,
 
@@ -111,45 +110,45 @@ function __.ADDON_LOADED()
 		21218, 21321, 21323, 21324, 21176
 	)
 
-	__.SPECIAL = __.Set(5462, 17696, 17117, 13347, 13289, 11511)
+	self.SPECIAL = self:Set(5462, 17696, 17117, 13347, 13289, 11511)
 
-	__.KEY = __.Set(9240, 17191, 13544, 12324, 16309, 12384, 20402)
+	self.KEY = self:Set(9240, 17191, 13544, 12324, 16309, 12384, 20402)
 
-	__.TOOL = __.Set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
+	self.TOOL = self:Set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
 
-	__.SetupSlash()
+	self:SetupSlash()
 
 	CreateFrame('GameTooltip', 'Clean_Up_Tooltip', nil, 'GameTooltipTemplate')
 
-	__.CreateButton('Bags')
-	__.CreateButton('Bank')
+	self:CreateButton('Bags')
+	self:CreateButton('Bank')
 end
 
-function __.PLAYER_LOGIN()
-	__.PickupContainerItem = PickupContainerItem
+function self:PLAYER_LOGIN()
+	self.PickupContainerItem = PickupContainerItem
 	function PickupContainerItem(...)
 		local container, position = unpack(arg)
 		if IsAltKeyDown() then
-			for _, item in {__.Item(container, position)} do
-				local slotKey = __.SlotKey(container, position)
+			for _, item in {self:Item(container, position)} do
+				local slotKey = self:SlotKey(container, position)
 				Clean_Up_Assignments[slotKey] = item
-				__.Log(slotKey..' assigned to '..item)
+				self:Log(slotKey..' assigned to '..item)
 			end
 		else
-			__.PickupContainerItem(unpack(arg))
+			self.PickupContainerItem(unpack(arg))
 		end
 	end
 
     do
         local lastTime, lastX, lastY, lastSlot
-		__.UseContainerItem = UseContainerItem
+		self.UseContainerItem = UseContainerItem
 		function UseContainerItem(...)
 			local container, position = unpack(arg)
-			local slotKey = __.SlotKey(container, position)
+			local slotKey = self:SlotKey(container, position)
 			if IsAltKeyDown() then
 				if Clean_Up_Assignments[slotKey] then
 					Clean_Up_Assignments[slotKey] = nil
-					__.Log(slotKey..' freed')
+					self:Log(slotKey..' freed')
 				end
 			else
 				local x, y = GetCursorPosition()
@@ -157,19 +156,19 @@ function __.PLAYER_LOGIN()
 					last_time = nil
 
 					local containers
-					for _, bagsContainer in __.BAGS do
+					for _, bagsContainer in self.BAGS do
 						if container == bagsContainer then
-							containers = __.BAGS
+							containers = self.BAGS
 							break
 						end
 					end
-					containers = containers or __.BANK
+					containers = containers or self.BANK
 					local link = GetContainerItemLink(container, position)
 					for _, otherContainer in containers do
 						for otherPosition=1,GetContainerNumSlots(otherContainer) do
 							if not (otherContainer == container and otherPosition == position) and GetContainerItemLink(otherContainer, otherPosition) == link then
 								arg[1], arg[2] = otherContainer, otherPosition
-								__.UseContainerItem(unpack(arg))
+								self.UseContainerItem(unpack(arg))
 							end
 						end
 					end
@@ -177,44 +176,44 @@ function __.PLAYER_LOGIN()
 					lastTime = GetTime()
                 	lastX, lastY = x, y
                 	lastSlot = slotKey
-					__.UseContainerItem(unpack(arg))
+					self.UseContainerItem(unpack(arg))
 				end
 			end
 		end
 	end
 end
 
-function __.UPDATE()
-	if __.containers == __.BAGS and not __.model then
-		if __.SellTrash() then
+function self:UPDATE()
+	if self.containers == self.BAGS and not self.model then
+		if self:SellTrash() then
 			return
 		end
 	end
 
-	if not __.model then
-		__.CreateModel()
+	if not self.model then
+		self:CreateModel()
 	end
 
-	if __.Sort() then
-		__:Hide()
+	if self:Sort() then
+		self:Hide()
 	end
 
-	__.Stack()
+	self:Stack()
 end
 
-function __.MERCHANT_SHOW()
-	__.atMerchant = true
+function self:MERCHANT_SHOW()
+	self.atMerchant = true
 end
 
-function __.MERCHANT_CLOSED()
-	__.atMerchant = false
+function self:MERCHANT_CLOSED()
+	self.atMerchant = false
 end
 
-function __.Log(msg)
+function self:Log(msg)
 	DEFAULT_CHAT_FRAME:AddMessage(LIGHTYELLOW_FONT_COLOR_CODE..'[Clean Up] '..msg)
 end
 
-function __.Set(...)
+function self:Set(...)
 	local t = {}
 	for i=1,arg.n do
 		t[arg[i]] = true
@@ -222,7 +221,7 @@ function __.Set(...)
 	return t
 end
 
-function __.LT(a, b)
+function self:LT(a, b)
 	local i = 1
 	while true do
 		if a[i] and b[i] and a[i] ~= b[i] then
@@ -236,7 +235,7 @@ function __.LT(a, b)
 	end
 end
 
-function __.Key(table, value)
+function self:Key(table, value)
 	for k, v in table do
 		if v == value then
 			return k
@@ -244,31 +243,31 @@ function __.Key(table, value)
 	end
 end
 
-function __.SlotKey(container, position)
+function self:SlotKey(container, position)
 	return container..':'..position
 end
 
-function __.SetupSlash()
+function self:SetupSlash()
   	SLASH_CLEANUPBAGS1 = '/cleanupbags'
 	function SlashCmdList.CLEANUPBAGS(arg)
 		Clean_Up_Bags = {parent=arg, position={0, 0}}
-		__.Log('Bags-frame: '..arg)
+		self:Log('Bags-frame: '..arg)
 	end
 
 	SLASH_CLEANUPBANK1 = '/cleanupbank'
 	function SlashCmdList.CLEANUPBANK(arg)
 		Clean_Up_Bank = {parent=arg, position={0, 0}}
-		__.Log('Bank-frame: '..arg)
+		self:Log('Bank-frame: '..arg)
 	end
 
     SLASH_CLEANUPREVERSE1 = '/cleanupreverse'
     function SlashCmdList.CLEANUPREVERSE(arg)
         Clean_Up_Reversed = not Clean_Up_Reversed
-        __.Log('Sort order: '..(Clean_Up_Reversed and 'Reversed' or 'Standard'))
+        self:Log('Sort order: '..(Clean_Up_Reversed and 'Reversed' or 'Standard'))
 	end
 end
 
-function __.CreateButton(name)
+function self:CreateButton(name)
 	local settings = getglobal('Clean_Up_'..name)
 
 	local button = CreateFrame('Button', nil, WorldFrame)
@@ -314,8 +313,8 @@ function __.CreateButton(name)
 	end)
 	button:SetScript('OnClick', function()
 		PlaySoundFile([[Interface\AddOns\Clean_Up\UI_BagSorting_01.ogg]])
-		__.containers = __[strupper(name)]
-		__.Go()
+		self.containers = self[strupper(name)]
+		self:Go()
 	end)
 	button:SetScript('OnEnter', function()
 		GameTooltip:SetOwner(this)
@@ -325,10 +324,10 @@ function __.CreateButton(name)
 	button:SetScript('OnLeave', function()
 		GameTooltip:Hide()
 	end)
-	__[strlower(name)..'Button'] = button
+	self[strlower(name)..'Button'] = button
 end
 
-function __.Move(src, dst)
+function self:Move(src, dst)
     local _, _, srcLocked = GetContainerItemInfo(src.container, src.position)
     local _, _, dstLocked = GetContainerItemInfo(dst.container, dst.position)
     
@@ -341,7 +340,7 @@ function __.Move(src, dst)
 	    local _, _, dstLocked = GetContainerItemInfo(dst.container, dst.position)
     	if srcLocked or dstLocked then
 			if src.state.item == dst.state.item then
-				local count = min(src.state.count, __.MaxStack(dst.state.item) - dst.state.count)
+				local count = min(src.state.count, self:MaxStack(dst.state.item) - dst.state.count)
 				src.state.count = src.state.count - count
 				dst.state.count = dst.state.count + count
 				if src.count == 0 then
@@ -356,10 +355,10 @@ function __.Move(src, dst)
     end
 end
 
-function __.TooltipInfo(container, position)
+function self:TooltipInfo(container, position)
 	local chargesPattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
 
-	Clean_Up_Tooltip:SetOwner(__, ANCHOR_NONE)
+	Clean_Up_Tooltip:SetOwner(self, ANCHOR_NONE)
 	Clean_Up_Tooltip:ClearLines()
 
 	if container == BANK_CONTAINER then
@@ -389,7 +388,7 @@ function __.TooltipInfo(container, position)
 	return charges or 1, usable, soulbound, quest, conjured
 end
 
-function __.Trash(container, position)
+function self:Trash(container, position)
 	for itemID in string.gfind(GetContainerItemLink(container, position) or '', 'item:(%d+)') do
 		if ({GetItemInfo(itemID)})[3] == 0 then
 			return true
@@ -397,12 +396,12 @@ function __.Trash(container, position)
 	end
 end
 
-function __.SellTrash()
+function self:SellTrash()
 	local found
-	if __.atMerchant then
-		for _, container in __.BAGS do
+	if self.atMerchant then
+		for _, container in self.BAGS do
 			for position=1,GetContainerNumSlots(container) do
-				if __.Trash(container, position) then
+				if self:Trash(container, position) then
 					found = true
 					UseContainerItem(container, position)
 				end
@@ -412,19 +411,19 @@ function __.SellTrash()
 	return found
 end
 
-function __.Sort()
+function self:Sort()
 	local complete = true
 
-	for _, dst in __.model do
+	for _, dst in self.model do
 		if dst.item and (dst.state.item ~= dst.item or dst.state.count < dst.count) then
 			complete = false
 
 			local sources, rank = {}, {}
 
-			for _, src in __.model do
+			for _, src in self.model do
 				if src.state.item == dst.item
 					and src ~= dst
-					and not (dst.state.item and src.class and src.class ~= __.Class(dst.state.item))
+					and not (dst.state.item and src.class and src.class ~= self:Class(dst.state.item))
 					and not (src.item and src.state.item == src.item and src.state.count <= src.count)
 				then
 					rank[src] = abs(src.state.count - dst.count + (dst.state.item == dst.item and dst.state.count or 0))
@@ -435,7 +434,7 @@ function __.Sort()
 			sort(sources, function(a, b) return rank[a] < rank[b] end)
 
 			for _, src in sources do
-				if __.Move(src, dst) then
+				if self:Move(src, dst) then
 					break
 				end
 			end
@@ -445,21 +444,21 @@ function __.Sort()
 	return complete
 end
 
-function __.Stack()
-	for _, src in __.model do
-		if src.state.item and src.state.count < __.MaxStack(src.state.item) then
-			for _, dst in __.model do
-				if dst ~= src and dst.state.item and dst.state.item == src.state.item and dst.state.count < __.MaxStack(dst.state.item) then
-					__.Move(src, dst)
+function self:Stack()
+	for _, src in self.model do
+		if src.state.item and src.state.count < self:MaxStack(src.state.item) then
+			for _, dst in self.model do
+				if dst ~= src and dst.state.item and dst.state.item == src.state.item and dst.state.count < self:MaxStack(dst.state.item) then
+					self:Move(src, dst)
 				end
 			end
 		end
 	end
 end
 
-function __.Go()
-	__.model = nil
-	__:Show()
+function self:Go()
+	self.model = nil
+	self:Show()
 end
 
 do
@@ -475,7 +474,7 @@ do
 
 	local function assign(slot, item)
 		if counts[item] > 0 then
-			local count = min(counts[item], __.MaxStack(item))
+			local count = min(counts[item], self:MaxStack(item))
 			slot.item = item
 			slot.count = count
 			counts[item] = counts[item] - count
@@ -484,8 +483,8 @@ do
 	end
 
 	local function assignCustom()
-		for _, slot in __.model do
-			for _, item in {Clean_Up_Assignments[__.SlotKey(slot.container, slot.position)]} do
+		for _, slot in self.model do
+			for _, item in {Clean_Up_Assignments[self:SlotKey(slot.container, slot.position)]} do
 				if counts[item] then
 					assign(slot, item)
 				end
@@ -494,11 +493,11 @@ do
 	end
 
 	local function assignSpecial()
-		for key, class in __.CLASSES do
-			for _, slot in __.model do
+		for key, class in self.CLASSES do
+			for _, slot in self.model do
 				if slot.class == key and not slot.item then
 					for _, item in items do
-						if __.Class(item) == key and assign(slot, item) then
+						if self:Class(item) == key and assign(slot, item) then
 							break
 						end
 				    end
@@ -508,7 +507,7 @@ do
 	end
 
 	local function assignRemaining()
-		for _, slot in __.model do
+		for _, slot in self.model do
 			if not slot.class and not slot.item then
 				for _, item in items do
 					if assign(slot, item) then
@@ -519,15 +518,15 @@ do
 		end
 	end
 
-	function __.CreateModel()
-		__.model = {}
+	function self:CreateModel()
+		self.model = {}
 		counts = {}
 
-		for _, container in __.containers do
-			local class = __.ContainerClass(container)
+		for _, container in self.containers do
+			local class = self:ContainerClass(container)
 			for position=1,GetContainerNumSlots(container) do
 				local slot = {container=container, position=position, class=class}
-				local item = __.Item(container, position)
+				local item = self:Item(container, position)
 				if item then
 					local _, count = GetContainerItemInfo(container, position)
 					slot.state = {item=item, count=count}
@@ -535,14 +534,14 @@ do
 				else
 					slot.state = {}
 				end
-				insert(__.model, slot)
+				insert(self.model, slot)
 			end
 		end
 		items = {}
 		for item, _ in counts do
 			tinsert(items, item)
 		end
-		sort(items, function(a, b) return __.LT(__.SortKey(a), __.SortKey(b)) end)
+		sort(items, function(a, b) return self:LT(self:SortKey(a), self:SortKey(b)) end)
 
 		assignCustom()
 		assignSpecial()
@@ -552,10 +551,10 @@ end
 
 do
 	local cache = {}
-	function __.ContainerClass(container)
+	function self:ContainerClass(container)
 		if not cache[container] and container ~= 0 and container ~= BANK_CONTAINER then
 			for _, name in {GetBagName(container)} do		
-				for class, info in __.CLASSES do
+				for class, info in self.CLASSES do
 					for _, itemID in info.containers do
 						if name == GetItemInfo(itemID) then
 							cache[container] = class
@@ -571,24 +570,24 @@ end
 do
 	local cache = {}
 
-	function __.Class(item)
+	function self:Class(item)
 		return cache[item].class
 	end
 
-	function __.MaxStack(item)
+	function self:MaxStack(item)
 		return cache[item].stack
 	end
 
-	function __.SortKey(item)
+	function self:SortKey(item)
 		return cache[item].sortKey
 	end
 
-	function __.Item(container, position)
+	function self:Item(container, position)
 		for _, link in {GetContainerItemLink(container, position)} do
 			local _, _, itemID, enchantID, suffixID, uniqueID = strfind(link, 'item:(%d+):(%d*):(%d*):(%d*)')
 			itemID = tonumber(itemID)
 			local _, _, quality, _, type, subType, stack, invType = GetItemInfo(itemID)
-			local charges, usable, soulbound, quest, conjured = __.TooltipInfo(container, position)
+			local charges, usable, soulbound, quest, conjured = self:TooltipInfo(container, position)
 
 			local key = format('%s:%s:%s:%s:%s:%s', itemID, enchantID, suffixID, uniqueID, charges, (soulbound and 1 or 0))
 
@@ -601,19 +600,19 @@ do
 					tinsert(sortKey, 1)
 
 				-- mounts
-				elseif __.MOUNT[itemID] then
+				elseif self.MOUNT[itemID] then
 					tinsert(sortKey, 2)
 
 				-- special items
-				elseif __.SPECIAL[itemID] then
+				elseif self.SPECIAL[itemID] then
 					tinsert(sortKey, 3)
 
 				-- key items
-				elseif __.KEY[itemID] then
+				elseif self.KEY[itemID] then
 					tinsert(sortKey, 4)
 
 				-- tools
-				elseif __.TOOL[itemID] then
+				elseif self.TOOL[itemID] then
 					tinsert(sortKey, 5)
 
 				-- conjured items
@@ -625,7 +624,7 @@ do
 					tinsert(sortKey, 6)
 
 				-- reagents
-				elseif type == __.ITEM_TYPES[9] then
+				elseif type == self.ITEM_TYPES[9] then
 					tinsert(sortKey, 7)
 
 				-- quest items
@@ -633,7 +632,7 @@ do
 					tinsert(sortKey, 9)
 
 				-- consumables
-				elseif usable and type ~= __.ITEM_TYPES[1] and type ~= __.ITEM_TYPES[2] and type ~= __.ITEM_TYPES[8] or type == __.ITEM_TYPES[4] then
+				elseif usable and type ~= self.ITEM_TYPES[1] and type ~= self.ITEM_TYPES[2] and type ~= self.ITEM_TYPES[8] or type == self.ITEM_TYPES[4] then
 					tinsert(sortKey, 8)
 
 				-- higher quality
@@ -649,9 +648,9 @@ do
 					tinsert(sortKey, 12)
 				end
 				
-				tinsert(sortKey, __.ItemTypeKey(type))
-				tinsert(sortKey, __.ItemInvTypeKey(type, subType, invType))
-				tinsert(sortKey, __.ItemSubTypeKey(type, subType))
+				tinsert(sortKey, self:ItemTypeKey(type))
+				tinsert(sortKey, self:ItemInvTypeKey(type, subType, invType))
+				tinsert(sortKey, self:ItemSubTypeKey(type, subType))
 				tinsert(sortKey, itemID)
 				tinsert(sortKey, 1/charges)
 				tinsert(sortKey, suffixID)
@@ -663,7 +662,7 @@ do
 					sortKey = sortKey,
 				}
 
-				for class, info in __.CLASSES do
+				for class, info in self.CLASSES do
 					if info.items[itemID] then
 						cache[key].class = class
 					end
