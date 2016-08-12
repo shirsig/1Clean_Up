@@ -6,10 +6,9 @@ end)
 self:SetScript('OnEvent', function()
 	this[event](this)
 end)
-self:RegisterEvent('ADDON_LOADED')
-self:RegisterEvent('PLAYER_LOGIN')
-self:RegisterEvent('MERCHANT_SHOW')
-self:RegisterEvent('MERCHANT_CLOSED')
+for _, event in {'ADDON_LOADED', 'PLAYER_LOGIN', 'MERCHANT_SHOW', 'MERCHANT_CLOSED'} do
+	self:RegisterEvent(event)
+end
 
 Clean_Up_Bags = {parent='ContainerFrame1', position={0, 0}}
 Clean_Up_Bank = {parent='BankFrame', position={0, 0}}
@@ -133,7 +132,7 @@ function self:PLAYER_LOGIN()
 	function PickupContainerItem(...)
 		local container, position = unpack(arg)
 		if IsAltKeyDown() then
-			for item in self.Present(self:Item(container, position)) do
+			for item in self:Present(self:Item(container, position)) do
 				local slotKey = self:SlotKey(container, position)
 				Clean_Up_Assignments[slotKey] = item
 				self:Log(slotKey..' assigned to '..item)
@@ -144,42 +143,33 @@ function self:PLAYER_LOGIN()
 	end
 
     do
-        local lastTime, lastX, lastY, lastSlot
+        local lastTime, lastSlot
 		self.UseContainerItem = UseContainerItem
 		function UseContainerItem(...)
 			local container, position = unpack(arg)
-			local slotKey = self:SlotKey(container, position)
+			local slot = self:SlotKey(container, position)
 			if IsAltKeyDown() then
-				if Clean_Up_Assignments[slotKey] then
-					Clean_Up_Assignments[slotKey] = nil
-					self:Log(slotKey..' freed')
+				if Clean_Up_Assignments[slot] then
+					Clean_Up_Assignments[slot] = nil
+					self:Log(slot..' freed')
 				end
 			else
 				local x, y = GetCursorPosition()
-				if lastTime and GetTime() - lastTime < .5 and x == lastX and y == lastY and slotKey == lastSlot then
+				if lastTime and GetTime() - lastTime < .5 and slot == lastSlot then
 					last_time = nil
-
-					local containers
-					for _, bagsContainer in self.BAGS do
-						if container == bagsContainer then
-							containers = self.BAGS
-							break
-						end
-					end
-					containers = containers or self.BANK
+					containers = self:Set(unpack(self.BAGS))[container] and self.BAGS or self.BANK
 					local link = GetContainerItemLink(container, position)
-					for _, otherContainer in containers do
-						for otherPosition=1,GetContainerNumSlots(otherContainer) do
-							if not (otherContainer == container and otherPosition == position) and GetContainerItemLink(otherContainer, otherPosition) == link then
-								arg[1], arg[2] = otherContainer, otherPosition
+					for _, container in containers do
+						for position=1,GetContainerNumSlots(container) do
+							if self:SlotKey(container, position) ~= slot and GetContainerItemLink(container, position) == link then
+								arg[1], arg[2] = container, position
 								self.UseContainerItem(unpack(arg))
 							end
 						end
 					end
 				else
 					lastTime = GetTime()
-                	lastX, lastY = x, y
-                	lastSlot = slotKey
+                	lastSlot = slot
 					self.UseContainerItem(unpack(arg))
 				end
 			end
@@ -488,7 +478,7 @@ do
 
 	local function assignCustom()
 		for _, slot in self.model do
-			for item in self.Present(Clean_Up_Assignments[self:SlotKey(slot.container, slot.position)]) do
+			for item in self:Present(Clean_Up_Assignments[self:SlotKey(slot.container, slot.position)]) do
 				if counts[item] then
 					assign(slot, item)
 				end
@@ -557,7 +547,7 @@ do
 	local cache = {}
 	function self:Class(container)
 		if not cache[container] and container ~= 0 and container ~= BANK_CONTAINER then
-			for name in self.Present(GetBagName(container)) do		
+			for name in self:Present(GetBagName(container)) do		
 				for class, info in self.CLASSES do
 					for _, itemID in info.containers do
 						if name == GetItemInfo(itemID) then
@@ -574,13 +564,12 @@ end
 do
 	local cache = {}
 
-	local mt = {__index=cache} 
 	function self:Info(item)
-		return setmetatable({}, mt)
+		return setmetatable({}, {__index=cache[item]})
 	end
 
 	function self:Item(container, position)
-		for link in self.Present(GetContainerItemLink(container, position)) do
+		for link in self:Present(GetContainerItemLink(container, position)) do
 			local _, _, itemID, enchantID, suffixID, uniqueID = strfind(link, 'item:(%d+):(%d*):(%d*):(%d*)')
 			itemID = tonumber(itemID)
 			local _, _, quality, _, type, subType, stack, invType = GetItemInfo(itemID)
