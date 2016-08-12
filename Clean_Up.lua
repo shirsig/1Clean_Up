@@ -21,6 +21,10 @@ self.BANK = {-1, 5, 6, 7, 8, 9, 10}
 
 self.ITEM_TYPES = {GetAuctionItemClasses()}
 
+function self:Present(value)
+	return value ~= nil and {[value]=true} or {}
+end
+
 function self:ItemTypeKey(itemClass)
 	return self:Key(self.ITEM_TYPES, itemClass) or 0
 end
@@ -129,7 +133,7 @@ function self:PLAYER_LOGIN()
 	function PickupContainerItem(...)
 		local container, position = unpack(arg)
 		if IsAltKeyDown() then
-			for _, item in {self:Item(container, position)} do
+			for item in self.Present(self:Item(container, position)) do
 				local slotKey = self:SlotKey(container, position)
 				Clean_Up_Assignments[slotKey] = item
 				self:Log(slotKey..' assigned to '..item)
@@ -340,7 +344,7 @@ function self:Move(src, dst)
 	    local _, _, dstLocked = GetContainerItemInfo(dst.container, dst.position)
     	if srcLocked or dstLocked then
 			if src.state.item == dst.state.item then
-				local count = min(src.state.count, self:MaxStack(dst.state.item) - dst.state.count)
+				local count = min(src.state.count, self:Info(dst.state.item).stack - dst.state.count)
 				src.state.count = src.state.count - count
 				dst.state.count = dst.state.count + count
 				if src.count == 0 then
@@ -423,7 +427,7 @@ function self:Sort()
 			for _, src in self.model do
 				if src.state.item == dst.item
 					and src ~= dst
-					and not (dst.state.item and src.class and src.class ~= self:Class(dst.state.item))
+					and not (dst.state.item and src.class and src.class ~= self:Info(dst.state.item).class)
 					and not (src.item and src.state.item == src.item and src.state.count <= src.count)
 				then
 					rank[src] = abs(src.state.count - dst.count + (dst.state.item == dst.item and dst.state.count or 0))
@@ -446,9 +450,9 @@ end
 
 function self:Stack()
 	for _, src in self.model do
-		if src.state.item and src.state.count < self:MaxStack(src.state.item) then
+		if src.state.item and src.state.count < self:Info(src.state.item).stack then
 			for _, dst in self.model do
-				if dst ~= src and dst.state.item and dst.state.item == src.state.item and dst.state.count < self:MaxStack(dst.state.item) then
+				if dst ~= src and dst.state.item and dst.state.item == src.state.item and dst.state.count < self:Info(dst.state.item).stack then
 					self:Move(src, dst)
 				end
 			end
@@ -474,7 +478,7 @@ do
 
 	local function assign(slot, item)
 		if counts[item] > 0 then
-			local count = min(counts[item], self:MaxStack(item))
+			local count = min(counts[item], self:Info(item).stack)
 			slot.item = item
 			slot.count = count
 			counts[item] = counts[item] - count
@@ -484,7 +488,7 @@ do
 
 	local function assignCustom()
 		for _, slot in self.model do
-			for _, item in {Clean_Up_Assignments[self:SlotKey(slot.container, slot.position)]} do
+			for item in self.Present(Clean_Up_Assignments[self:SlotKey(slot.container, slot.position)]) do
 				if counts[item] then
 					assign(slot, item)
 				end
@@ -497,7 +501,7 @@ do
 			for _, slot in self.model do
 				if slot.class == key and not slot.item then
 					for _, item in items do
-						if self:Class(item) == key and assign(slot, item) then
+						if self:Info(item).class == key and assign(slot, item) then
 							break
 						end
 				    end
@@ -523,7 +527,7 @@ do
 		counts = {}
 
 		for _, container in self.containers do
-			local class = self:ContainerClass(container)
+			local class = self:Class(container)
 			for position=1,GetContainerNumSlots(container) do
 				local slot = {container=container, position=position, class=class}
 				local item = self:Item(container, position)
@@ -541,7 +545,7 @@ do
 		for item, _ in counts do
 			tinsert(items, item)
 		end
-		sort(items, function(a, b) return self:LT(self:SortKey(a), self:SortKey(b)) end)
+		sort(items, function(a, b) return self:LT(self:Info(a).sortKey, self:Info(b).sortKey) end)
 
 		assignCustom()
 		assignSpecial()
@@ -551,9 +555,9 @@ end
 
 do
 	local cache = {}
-	function self:ContainerClass(container)
+	function self:Class(container)
 		if not cache[container] and container ~= 0 and container ~= BANK_CONTAINER then
-			for _, name in {GetBagName(container)} do		
+			for name in self.Present(GetBagName(container)) do		
 				for class, info in self.CLASSES do
 					for _, itemID in info.containers do
 						if name == GetItemInfo(itemID) then
@@ -570,20 +574,13 @@ end
 do
 	local cache = {}
 
-	function self:Class(item)
-		return cache[item].class
-	end
-
-	function self:MaxStack(item)
-		return cache[item].stack
-	end
-
-	function self:SortKey(item)
-		return cache[item].sortKey
+	local mt = {__index=cache} 
+	function self:Info(item)
+		return setmetatable({}, mt)
 	end
 
 	function self:Item(container, position)
-		for _, link in {GetContainerItemLink(container, position)} do
+		for link in self.Present(GetContainerItemLink(container, position)) do
 			local _, _, itemID, enchantID, suffixID, uniqueID = strfind(link, 'item:(%d+):(%d*):(%d*):(%d*)')
 			itemID = tonumber(itemID)
 			local _, _, quality, _, type, subType, stack, invType = GetItemInfo(itemID)
