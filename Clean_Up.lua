@@ -158,9 +158,7 @@ function self:PLAYER_LOGIN()
 					self:Log(slot..' freed')
 				end
 			else
-				local x, y = GetCursorPosition()
 				if lastTime and GetTime() - lastTime < .5 and slot == lastSlot then
-					last_time = nil
 					containers = self:Set(unpack(self.bags.containers))[container] and self.bags.containers or self.bank.containers
 					local link = GetContainerItemLink(container, position)
 					for _, container in containers do
@@ -171,11 +169,10 @@ function self:PLAYER_LOGIN()
 							end
 						end
 					end
-				else
-					lastTime = GetTime()
-                	lastSlot = slot
-					self.UseContainerItem(unpack(arg))
 				end
+				lastTime = GetTime()
+            	lastSlot = slot
+				self.UseContainerItem(unpack(arg))
 			end
 		end
 	end
