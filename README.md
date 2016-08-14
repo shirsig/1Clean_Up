@@ -8,26 +8,8 @@ This addOn automatically stacks and sorts your items.
 
 ### Commands
 **/cleanupreverse** (Makes the sorting start at the top of your bags instead of the bottom)<br/>
-**/cleanupbags framename** (Changes the frame the "Clean Up Bags"-button is attached to to **framename**, requires **/reload**)<br/>
-**/cleanupbank framename** (Changes the frame the "Clean Up Bank"-button is attached to to **framename**, requires **/reload**)
-
-#### Configuring the buttons for OneBag
-
-```
-/cleanupbags OneBagFrame
-/cleanupbank OneBankFrame
-/reload
-```
-
-#### Configuring the buttons for Bagnon
-
-```
-/cleanupbags Bagnon
-/cleanupbank Banknon
-/reload
-```
-
-When holding down the **Alt-key** you can **drag** the buttons to position them on their frames.
+**/cleanupbags** (starts button placement mode. click to place, escape to cancel)<br/>
+**/cleanupbank** (starts button placement mode. click to place, escape to cancel)
 
 **Alt-left-click** on a bag item will permanently assign its slot to that item.<br/>
 **Alt-right-click** on a bag slot will clear its assignment.
