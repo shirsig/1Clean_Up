@@ -24,8 +24,14 @@ self.bank = {
 
 self.ITEM_TYPES = {GetAuctionItemClasses()}
 
-function self:Present(value)
-	return value ~= nil and {[value]=true} or {}
+function self:Present(...)
+	local called
+	return function()
+		if not called then
+			called = true
+			return unpack(arg)
+		end
+	end
 end
 
 function self:ItemTypeKey(itemClass)
@@ -418,6 +424,49 @@ function self:SellTrash()
 	end
 	return found
 end
+
+-- do
+-- 	local mapping = {}
+-- 	function self:ResolvePosition(bag, slot)
+-- 		for position in self:Present(mapping[bag..':'..slot]) do
+-- 			return unpack(position)
+-- 		end
+-- 		return bag, slot
+-- 	end
+
+-- 	local function key(slot)
+-- 		return slot.container..':'..slot.position
+-- 	end
+
+-- 	self._GetContainerItemInfo = GetContainerItemInfo
+-- 	function GetContainerItemInfo(bag, slot, ...)
+-- 		bag, slot = self:ResolvePosition(bag, slot)
+-- 		return self._GetContainerItemInfo(bag, slot, unpack(arg))
+-- 	end
+
+-- 	function self:Swap(slot1, slot2)
+-- 		slot1.state, slot2.state = slot2.state, slot1.state
+-- 		mapping[key(slot1)], mapping[key(slot2)] = {self:ResolvePosition(slot2.container, slot2.position)}, {self:ResolvePosition(slot1.container, slot1.position)}
+-- 	end
+
+-- 	function self:Sort()
+-- 		local complete = true
+
+-- 		for _, dst in self.model do
+-- 			if dst.item and (dst.state.item ~= dst.item or dst.state.count < dst.count) then
+-- 				complete = false
+
+-- 				for _, src in self.model do
+-- 					if src.state.item == dst.item and src.state.count == dst.count and not (src.item and src.state.item == src.item and src.state.count == src.count) then
+-- 						self:Swap(src, dst)
+-- 					end
+-- 				end
+-- 			end
+-- 		end
+
+-- 		return complete
+-- 	end
+-- end
 
 function self:Sort()
 	local complete = true
