@@ -425,81 +425,123 @@ function self:SellTrash()
 	return found
 end
 
--- do
--- 	local mapping = {}
--- 	function self:ResolvePosition(bag, slot)
--- 		for position in self:Present(mapping[bag..':'..slot]) do
--- 			return unpack(position)
--- 		end
--- 		return bag, slot
--- 	end
+do
+	local mapping = {}
+	local function resolvePosition(bag, slot)
+		for position in self:Present(mapping[bag..':'..slot]) do
+			return unpack(position)
+		end
+		return bag, slot
+	end
 
--- 	local function key(slot)
--- 		return slot.container..':'..slot.position
--- 	end
+	local function convert_function(f)
+		return function(bag, slot, ...)
+			bag, slot = resolvePosition(bag, slot)
+			return f(bag, slot, unpack(arg))
+		end
+	end
 
--- 	self._GetContainerItemInfo = GetContainerItemInfo
--- 	function GetContainerItemInfo(bag, slot, ...)
--- 		bag, slot = self:ResolvePosition(bag, slot)
--- 		return self._GetContainerItemInfo(bag, slot, unpack(arg))
--- 	end
+	local function convert_method(f)
+		return function(self, bag, slot, ...)
+			bag, slot = resolvePosition(bag, slot)
+			return f(self, bag, slot, unpack(arg))
+		end
+	end
 
--- 	function self:Swap(slot1, slot2)
--- 		slot1.state, slot2.state = slot2.state, slot1.state
--- 		mapping[key(slot1)], mapping[key(slot2)] = {self:ResolvePosition(slot2.container, slot2.position)}, {self:ResolvePosition(slot1.container, slot1.position)}
--- 	end
+	for _, name in { 'GetContainerItemLink', 'GetContainerItemInfo', 'PickupContainerItem', 'SplitContainerItem', 'UseContainerItem' } do
+		setglobal(name, convert_function(getglobal(name)))
+	end
 
--- 	function self:Sort()
--- 		local complete = true
-
--- 		for _, dst in self.model do
--- 			if dst.item and (dst.state.item ~= dst.item or dst.state.count < dst.count) then
--- 				complete = false
-
--- 				for _, src in self.model do
--- 					if src.state.item == dst.item and src.state.count == dst.count and not (src.item and src.state.item == src.item and src.state.count == src.count) then
--- 						self:Swap(src, dst)
--- 					end
--- 				end
--- 			end
--- 		end
-
--- 		return complete
--- 	end
--- end
-
-function self:Sort()
-	local complete = true
-
-	for _, dst in self.model do
-		if dst.item and (dst.state.item ~= dst.item or dst.state.count < dst.count) then
-			complete = false
-
-			local sources, rank = {}, {}
-
-			for _, src in self.model do
-				if src.state.item == dst.item
-					and src ~= dst
-					and not (dst.state.item and src.class and src.class ~= self:Info(dst.state.item).class)
-					and not (src.item and src.state.item == src.item and src.state.count <= src.count)
-				then
-					rank[src] = abs(src.state.count - dst.count + (dst.state.item == dst.item and dst.state.count or 0))
-					tinsert(sources, src)
-				end
+	GameTooltip.SetBagItem = convert_method(GameTooltip.SetBagItem)
+	do
+		local orig = CreateFrame
+		function CreateFrame(...)
+			local frame = orig(unpack(arg))
+			if arg[1] == 'GameTooltip' then
+				frame.SetBagItem = convert_method(frame.SetBagItem)
 			end
+			return frame
+		end
+	end
 
-			sort(sources, function(a, b) return rank[a] < rank[b] end)
+	local function key(slot)
+		return slot.container..':'..slot.position
+	end
 
-			for _, src in sources do
-				if self:Move(src, dst) then
-					break
+	function self:Swap(slot1, slot2)
+		slot1.state, slot2.state = slot2.state, slot1.state
+		mapping[key(slot1)], mapping[key(slot2)] = {resolvePosition(slot2.container, slot2.position)}, {resolvePosition(slot1.container, slot1.position)}
+	end
+
+
+	local function trigger_bag_update()
+		for container = -1, 10 do
+			for position = 1, GetContainerNumSlots(container) do
+				local name, _, locked = GetContainerItemInfo(container, position)
+				if name and not locked then
+					PickupContainerItem(container, position)
+					ClearCursor()
+					return
 				end
 			end
 		end
 	end
 
-	return complete
+	function self:Sort()
+		local complete = true
+
+		for _, dst in self.model do
+			if dst.item and (dst.state.item ~= dst.item or dst.state.count < dst.count) then
+				complete = false
+
+				for _, src in self.model do
+					if src.state.item == dst.item and src.state.count == dst.count and not (src.item and src.state.item == src.item and src.state.count == src.count) then
+						self:Swap(src, dst)
+					end
+				end
+			end
+		end
+
+		if complete then
+			trigger_bag_update()
+		end
+
+		return complete
+	end
 end
+
+-- function self:Sort()
+-- 	local complete = true
+
+-- 	for _, dst in self.model do
+-- 		if dst.item and (dst.state.item ~= dst.item or dst.state.count < dst.count) then
+-- 			complete = false
+
+-- 			local sources, rank = {}, {}
+
+-- 			for _, src in self.model do
+-- 				if src.state.item == dst.item
+-- 					and src ~= dst
+-- 					and not (dst.state.item and src.class and src.class ~= self:Info(dst.state.item).class)
+-- 					and not (src.item and src.state.item == src.item and src.state.count <= src.count)
+-- 				then
+-- 					rank[src] = abs(src.state.count - dst.count + (dst.state.item == dst.item and dst.state.count or 0))
+-- 					tinsert(sources, src)
+-- 				end
+-- 			end
+
+-- 			sort(sources, function(a, b) return rank[a] < rank[b] end)
+
+-- 			for _, src in sources do
+-- 				if self:Move(src, dst) then
+-- 					break
+-- 				end
+-- 			end
+-- 		end
+-- 	end
+
+-- 	return complete
+-- end
 
 function self:Stack()
 	for _, src in self.model do
