@@ -1,0 +1,5 @@
+## Interface: 11200
+## Title: Clean Up
+## Author: shirsig
+## SavedVariablesPerCharacter: _Clean_Up_Settings
+_Clean_Up.lua

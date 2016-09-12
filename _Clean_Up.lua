@@ -2,11 +2,11 @@ local self = CreateFrame'Frame'
 self:Hide()
 self:SetScript('OnUpdate', function() this:UPDATE() end)
 self:SetScript('OnEvent', function() this[event](this) end)
-for _, event in {'ADDON_LOADED', 'PLAYER_LOGIN', 'MERCHANT_SHOW', 'MERCHANT_CLOSED'} do
+for _, event in { 'ADDON_LOADED', 'PLAYER_LOGIN', 'MERCHANT_SHOW', 'MERCHANT_CLOSED' } do
 	self:RegisterEvent(event)
 end
 
-Clean_Up_Settings = {
+_Clean_Up_Settings = {
 	reversed = false,
 	assignments = {},
 	bags = {},
@@ -22,7 +22,7 @@ self.bank = {
 	tooltip = 'Clean Up Bank',
 }
 
-self.ITEM_TYPES = {GetAuctionItemClasses()}
+self.ITEM_TYPES = { GetAuctionItemClasses() }
 
 function self:Present(...)
 	local called
@@ -39,40 +39,40 @@ function self:ItemTypeKey(itemClass)
 end
 
 function self:ItemSubTypeKey(itemClass, itemSubClass)
-	return self:Key({GetAuctionItemSubClasses(self:ItemTypeKey(itemClass))}, itemClass) or 0
+	return self:Key({ GetAuctionItemSubClasses(self:ItemTypeKey(itemClass)) }, itemClass) or 0
 end
 
 function self:ItemInvTypeKey(itemClass, itemSubClass, itemSlot)
-	return self:Key({GetAuctionInvTypes(self:ItemTypeKey(itemClass), self:ItemSubTypeKey(itemSubClass))}, itemSlot) or 0
+	return self:Key({ GetAuctionInvTypes(self:ItemTypeKey(itemClass), self:ItemSubTypeKey(itemSubClass)) }, itemSlot) or 0
 end
 
 function self.ADDON_LOADED()
-	if arg1 ~= 'Clean_Up' then
+	if arg1 ~= '_Clean_Up' then
 		return
 	end
 
 	self.CLASSES = {
 		-- arrow
 		{
-			containers = {2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714},
+			containers = { 2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714 },
 			items = self:Set(2512, 2515, 3030, 3464, 9399, 11285, 12654, 18042, 19316),
 		},
 		
 		-- bullet
 		{
-			containers = {2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320},
+			containers = { 2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320 },
 			items = self:Set(2516, 2519, 3033, 3465, 4960, 5568, 8067, 8068, 8069, 10512, 10513, 11284, 11630, 13377, 15997, 19317),
 		},
 
 		-- soul
 		{
-			containers = {22243, 22244, 21340, 21341, 21342},
+			containers = { 22243, 22244, 21340, 21341, 21342 },
 			items = self:Set(6265),
 		},
 
 		-- ench
 		{
-			containers = {22246, 22248, 22249},
+			containers = { 22246, 22248, 22249 },
 			items = self:Set(
 				-- dust
 				10940, 11083, 11137, 11176, 16204,
@@ -89,7 +89,7 @@ function self.ADDON_LOADED()
 
 		-- herb
 		{
-			containers = {22250, 22251, 22252},
+			containers = { 22250, 22251, 22252 },
 			items = self:Set(765, 785, 2447, 2449, 2450, 2452, 2453, 3355, 3356, 3357, 3358, 3369, 3818, 3819, 3820, 3821, 4625, 8831, 8836, 8838, 8839, 8845, 8846, 13463, 13464, 13465, 13466, 13467, 13468),
 		},
 	}
@@ -131,7 +131,7 @@ function self.ADDON_LOADED()
 
 	self:SetupSlash()
 
-	CreateFrame('GameTooltip', 'Clean_Up_Tooltip', nil, 'GameTooltipTemplate')
+	CreateFrame('GameTooltip', '_Clean_Up_Tooltip', nil, 'GameTooltipTemplate')
 	self:CreateButtonPlacer()
 	self:CreateButton'bags'
 	self:CreateButton'bank'
@@ -144,8 +144,8 @@ function self:PLAYER_LOGIN()
 		if IsAltKeyDown() then
 			for item in self:Present(self:Item(container, position)) do
 				local slotKey = self:SlotKey(container, position)
-				Clean_Up_Settings.assignments[slotKey] = item
-				self:Log(slotKey..' assigned to '..item)
+				_Clean_Up_Settings.assignments[slotKey] = item
+				self:print(slotKey..' assigned to '..item)
 			end
 		else
 			self.PickupContainerItem(unpack(arg))
@@ -159,16 +159,16 @@ function self:PLAYER_LOGIN()
 			local container, position = unpack(arg)
 			local slot = self:SlotKey(container, position)
 			if IsAltKeyDown() then
-				if Clean_Up_Settings.assignments[slot] then
-					Clean_Up_Settings.assignments[slot] = nil
-					self:Log(slot..' freed')
+				if _Clean_Up_Settings.assignments[slot] then
+					_Clean_Up_Settings.assignments[slot] = nil
+					self:print(slot..' freed')
 				end
 			else
 				if lastTime and GetTime() - lastTime < .5 and slot == lastSlot then
 					containers = self:Set(unpack(self.bags.containers))[container] and self.bags.containers or self.bank.containers
 					local link = GetContainerItemLink(container, position)
 					for _, container in containers do
-						for position=1,GetContainerNumSlots(container) do
+						for position = 1, GetContainerNumSlots(container) do
 							if self:SlotKey(container, position) ~= slot and GetContainerItemLink(container, position) == link then
 								arg[1], arg[2] = container, position
 								self.UseContainerItem(unpack(arg))
@@ -207,7 +207,7 @@ function self:MERCHANT_CLOSED()
 	self.atMerchant = false
 end
 
-function self:Log(msg)
+function self:print(msg)
 	DEFAULT_CHAT_FRAME:AddMessage(LIGHTYELLOW_FONT_COLOR_CODE..'[Clean Up] '..msg)
 end
 
@@ -260,8 +260,8 @@ function self:SetupSlash()
 
     SLASH_CLEANUPREVERSE1 = '/cleanupreverse'
     function SlashCmdList.CLEANUPREVERSE(arg)
-        Clean_Up_Settings.reversed = not Clean_Up_Settings.reversed
-        self:Log('Sort order: '..(Clean_Up_Settings.reversed and 'Reversed' or 'Standard'))
+        _Clean_Up_Settings.reversed = not _Clean_Up_Settings.reversed
+        self:print('Sort order: '..(_Clean_Up_Settings.reversed and 'Reversed' or 'Standard'))
 	end
 end
 
@@ -269,9 +269,9 @@ function self:CreateBrushButton(parent)
 	local button = CreateFrame('Button', nil, parent)
 	button:SetWidth(28)
 	button:SetHeight(26)
-	button:SetNormalTexture[[Interface\AddOns\Clean_Up\Bags]]
+	button:SetNormalTexture[[Interface\AddOns\_Clean_Up\Bags]]
 	button:GetNormalTexture():SetTexCoord(.12109375, .23046875, .7265625, .9296875)
-	button:SetPushedTexture[[Interface\AddOns\Clean_Up\Bags]]
+	button:SetPushedTexture[[Interface\AddOns\_Clean_Up\Bags]]
 	button:GetPushedTexture():SetTexCoord(.00390625, .11328125, .7265625, .9296875)
 	button:SetHighlightTexture[[Interface\Buttons\ButtonHilight-Square]]
 	button:GetHighlightTexture():ClearAllPoints()
@@ -303,7 +303,7 @@ function self:CreateButtonPlacer()
 		if not this:IsMouseEnabled() and GetMouseFocus() then
 			local parent = GetMouseFocus()
 			local parentScale, parentX, parentY = parent:GetEffectiveScale(), parent:GetCenter()
-			Clean_Up_Settings[this.key] = {parent=parent:GetName(), position={x/parentScale-parentX, y/parentScale-parentY}}
+			_Clean_Up_Settings[this.key] = { parent=parent:GetName(), position={ x/parentScale - parentX, y/parentScale - parentY } }
 			self:UpdateButton(this.key)
 			this:EnableMouse(true)
 			this:Hide()
@@ -312,13 +312,13 @@ function self:CreateButtonPlacer()
 end
 
 function self:UpdateButton(key)
-	local button, settings = self[key].button, Clean_Up_Settings[key]
+	local button, settings = self[key].button, _Clean_Up_Settings[key]
 	button:SetParent(settings.parent)
 	button:SetPoint('CENTER', unpack(settings.position))
 end
 
 function self:CreateButton(key)
-	local settings = Clean_Up_Settings[key]
+	local settings = _Clean_Up_Settings[key]
 	local button = self:CreateBrushButton()
 	self[key].button = button
 	button:SetScript('OnUpdate', function()
@@ -328,7 +328,7 @@ function self:CreateButton(key)
 		end
 	end)
 	button:SetScript('OnClick', function()
-		PlaySoundFile[[Interface\AddOns\Clean_Up\UI_BagSorting_01.ogg]]
+		PlaySoundFile[[Interface\AddOns\_Clean_Up\UI_BagSorting_01.ogg]]
 		self:Go(key)
 	end)
 	button:SetScript('OnEnter', function()
@@ -372,18 +372,18 @@ end
 function self:TooltipInfo(container, position)
 	local chargesPattern = '^'..gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)')..'$'
 
-	Clean_Up_Tooltip:SetOwner(self, ANCHOR_NONE)
-	Clean_Up_Tooltip:ClearLines()
+	_Clean_Up_Tooltip:SetOwner(self, ANCHOR_NONE)
+	_Clean_Up_Tooltip:ClearLines()
 
 	if container == BANK_CONTAINER then
-		Clean_Up_Tooltip:SetInventoryItem('player', BankButtonIDToInvSlotID(position))
+		_Clean_Up_Tooltip:SetInventoryItem('player', BankButtonIDToInvSlotID(position))
 	else
-		Clean_Up_Tooltip:SetBagItem(container, position)
+		_Clean_Up_Tooltip:SetBagItem(container, position)
 	end
 
 	local charges, usable, soulbound, quest, conjured
-	for i=1,Clean_Up_Tooltip:NumLines() do
-		local text = getglobal('Clean_Up_TooltipTextLeft'..i):GetText()
+	for i = 1, _Clean_Up_Tooltip:NumLines() do
+		local text = getglobal('_Clean_Up_TooltipTextLeft'..i):GetText()
 
 		local _, _, chargeString = strfind(text, chargesPattern)
 		if chargeString then
@@ -565,7 +565,7 @@ do
 	local items, counts
 
 	local function insert(t, v)
-		if Clean_Up_Settings.reversed then
+		if _Clean_Up_Settings.reversed then
 			tinsert(t, v)
 		else
 			tinsert(t, 1, v)
@@ -584,7 +584,7 @@ do
 
 	local function assignCustom()
 		for _, slot in self.model do
-			for item in self:Present(Clean_Up_Settings.assignments[self:SlotKey(slot.container, slot.position)]) do
+			for item in self:Present(_Clean_Up_Settings.assignments[self:SlotKey(slot.container, slot.position)]) do
 				if counts[item] then
 					assign(slot, item)
 				end
