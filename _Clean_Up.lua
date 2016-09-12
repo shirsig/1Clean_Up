@@ -14,11 +14,11 @@ _Clean_Up_Settings = {
 }
 
 self.bags = {
-	containers = {0, 1, 2, 3, 4},
+	containers = { 0, 1, 2, 3, 4 },
 	tooltip = 'Clean Up Bags',
 }
 self.bank = {
-	containers = {-1, 5, 6, 7, 8, 9, 10},
+	containers = { -1, 5, 6, 7, 8, 9, 10 },
 	tooltip = 'Clean Up Bank',
 }
 
