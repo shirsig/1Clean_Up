@@ -193,7 +193,7 @@ function self:UPDATE()
 	if not self.model then
 		self:CreateModel()
 	end
-	if self:Sort() then
+	if self:soft_sort_step() then
 		self:Hide()
 	end
 	self:Stack()
@@ -487,7 +487,7 @@ do
 		end
 	end
 
-	function self:Sort()
+	function self:soft_sort_step()
 		local complete = true
 
 		for _, dst in self.model do
@@ -510,38 +510,38 @@ do
 	end
 end
 
--- function self:Sort()
--- 	local complete = true
+function self:hard_sort_step()
+	local complete = true
 
--- 	for _, dst in self.model do
--- 		if dst.item and (dst.state.item ~= dst.item or dst.state.count < dst.count) then
--- 			complete = false
+	for _, dst in self.model do
+		if dst.item and (dst.state.item ~= dst.item or dst.state.count < dst.count) then
+			complete = false
 
--- 			local sources, rank = {}, {}
+			local sources, rank = {}, {}
 
--- 			for _, src in self.model do
--- 				if src.state.item == dst.item
--- 					and src ~= dst
--- 					and not (dst.state.item and src.class and src.class ~= self:Info(dst.state.item).class)
--- 					and not (src.item and src.state.item == src.item and src.state.count <= src.count)
--- 				then
--- 					rank[src] = abs(src.state.count - dst.count + (dst.state.item == dst.item and dst.state.count or 0))
--- 					tinsert(sources, src)
--- 				end
--- 			end
+			for _, src in self.model do
+				if src.state.item == dst.item
+					and src ~= dst
+					and not (dst.state.item and src.class and src.class ~= self:Info(dst.state.item).class)
+					and not (src.item and src.state.item == src.item and src.state.count <= src.count)
+				then
+					rank[src] = abs(src.state.count - dst.count + (dst.state.item == dst.item and dst.state.count or 0))
+					tinsert(sources, src)
+				end
+			end
 
--- 			sort(sources, function(a, b) return rank[a] < rank[b] end)
+			sort(sources, function(a, b) return rank[a] < rank[b] end)
 
--- 			for _, src in sources do
--- 				if self:Move(src, dst) then
--- 					break
--- 				end
--- 			end
--- 		end
--- 	end
+			for _, src in sources do
+				if self:Move(src, dst) then
+					break
+				end
+			end
+		end
+	end
 
--- 	return complete
--- end
+	return complete
+end
 
 function self:Stack()
 	for _, src in self.model do
