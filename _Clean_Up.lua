@@ -265,7 +265,7 @@ function self:SetupSlash()
 	end
 end
 
-function self:CreateBrushButton(parent)
+function self:BrushButton(parent)
 	local button = CreateFrame('Button', nil, parent)
 	button:SetWidth(28)
 	button:SetHeight(26)
@@ -281,6 +281,41 @@ function self:CreateBrushButton(parent)
 	return button
 end
 
+function self:UpdateButton(key)
+	local button, settings = self[key].button, _Clean_Up_Settings[key]
+	button:SetParent(settings.parent)
+	button:SetPoint('CENTER', unpack(settings.position))
+end
+
+function self:CreateButton(key)
+	local settings = _Clean_Up_Settings[key]
+	local button = self:BrushButton()
+	self[key].button = button
+	button:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
+	button:SetScript('OnUpdate', function()
+		if settings.parent and getglobal(settings.parent) then
+			self:UpdateButton(key)
+			this:SetScript('OnUpdate', nil)
+		end
+	end)
+	button:SetScript('OnClick', function()
+		if arg1 == 'LeftButton' then
+			PlaySoundFile[[Interface\AddOns\_Clean_Up\UI_BagSorting_01.ogg]]
+			self:Go(key)
+		elseif arg1 == 'RightButton' then
+			self:toggle_soft_sorting()
+		end
+	end)
+	button:SetScript('OnEnter', function()
+		GameTooltip:SetOwner(this)
+		GameTooltip:AddLine(self[key].tooltip)
+		GameTooltip:Show()
+	end)
+	button:SetScript('OnLeave', function()
+		GameTooltip:Hide()
+	end)
+end
+
 function self:CreateButtonPlacer()
 	local frame = CreateFrame('Button', nil, UIParent)
 	self.buttonPlacer = frame
@@ -291,7 +326,7 @@ function self:CreateButtonPlacer()
 	local escapeInterceptor = CreateFrame('EditBox', nil, frame)
 	escapeInterceptor:SetScript('OnEscapePressed', function() frame:Hide() end)
 
-	local buttonPreview = self:CreateBrushButton(frame)
+	local buttonPreview = self:BrushButton(frame)
 	buttonPreview:EnableMouse(false)
 	buttonPreview:SetAlpha(.5)
 
@@ -308,36 +343,6 @@ function self:CreateButtonPlacer()
 			this:EnableMouse(true)
 			this:Hide()
 		end
-	end)
-end
-
-function self:UpdateButton(key)
-	local button, settings = self[key].button, _Clean_Up_Settings[key]
-	button:SetParent(settings.parent)
-	button:SetPoint('CENTER', unpack(settings.position))
-end
-
-function self:CreateButton(key)
-	local settings = _Clean_Up_Settings[key]
-	local button = self:CreateBrushButton()
-	self[key].button = button
-	button:SetScript('OnUpdate', function()
-		if settings.parent and getglobal(settings.parent) then
-			self:UpdateButton(key)
-			this:SetScript('OnUpdate', nil)
-		end
-	end)
-	button:SetScript('OnClick', function()
-		PlaySoundFile[[Interface\AddOns\_Clean_Up\UI_BagSorting_01.ogg]]
-		self:Go(key)
-	end)
-	button:SetScript('OnEnter', function()
-		GameTooltip:SetOwner(this)
-		GameTooltip:AddLine(self[key].tooltip)
-		GameTooltip:Show()
-	end)
-	button:SetScript('OnLeave', function()
-		GameTooltip:Hide()
 	end)
 end
 
@@ -426,9 +431,9 @@ function self:SellTrash()
 end
 
 do
-	local mapping = {}
+	local mapping, enabled = {}, true
 	local function resolvePosition(bag, slot)
-		for position in self:Present(mapping[bag..':'..slot]) do
+		for position in self:Present(enabled and mapping[bag..':'..slot] or nil) do
 			return unpack(position)
 		end
 		return bag, slot
@@ -464,15 +469,7 @@ do
 		end
 	end
 
-	local function key(slot)
-		return slot.container..':'..slot.position
-	end
-
-	function self:Swap(slot1, slot2)
-		slot1.state, slot2.state = slot2.state, slot1.state
-		mapping[key(slot1)], mapping[key(slot2)] = {resolvePosition(slot2.container, slot2.position)}, {resolvePosition(slot1.container, slot1.position)}
-	end
-
+-- GameTooltip.SetInventoryItem('player', BankButtonIDToInvSlotID(position))
 
 	local function trigger_bag_update()
 		for container = -1, 10 do
@@ -487,7 +484,20 @@ do
 		end
 	end
 
+	local function key(slot)
+		return slot.container..':'..slot.position
+	end
+
+	function self:Swap(slot1, slot2)
+		slot1.state, slot2.state = slot2.state, slot1.state
+		mapping[key(slot1)], mapping[key(slot2)] = {resolvePosition(slot2.container, slot2.position)}, {resolvePosition(slot1.container, slot1.position)}
+	end
+
 	function self:soft_sort_step()
+		if not enabled then
+			return true
+		end
+
 		local complete = true
 
 		for _, dst in self.model do
@@ -507,6 +517,18 @@ do
 		end
 
 		return complete
+	end
+
+	function self:toggle_soft_sorting()
+		enabled = not enabled
+		if enabled then
+			self.bags.button:GetNormalTexture():SetDesaturated(false)
+			self.bank.button:GetNormalTexture():SetDesaturated(false)
+		else
+			self.bags.button:GetNormalTexture():SetDesaturated(true)
+			self.bank.button:GetNormalTexture():SetDesaturated(true)
+		end
+		trigger_bag_update()
 	end
 end
 
