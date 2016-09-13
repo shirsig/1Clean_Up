@@ -51,83 +51,75 @@ function self.ADDON_LOADED()
 		return
 	end
 
-	self.CLASSES = {
-		-- arrow
-		{
-			containers = { 2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714 },
-			items = self:Set(2512, 2515, 3030, 3464, 9399, 11285, 12654, 18042, 19316),
-		},
-		
-		-- bullet
-		{
-			containers = { 2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320 },
-			items = self:Set(2516, 2519, 3033, 3465, 4960, 5568, 8067, 8068, 8069, 10512, 10513, 11284, 11630, 13377, 15997, 19317),
-		},
-
-		-- soul
-		{
-			containers = { 22243, 22244, 21340, 21341, 21342 },
-			items = self:Set(6265),
-		},
-
-		-- ench
-		{
-			containers = { 22246, 22248, 22249 },
-			items = self:Set(
-				-- dust
-				10940, 11083, 11137, 11176, 16204,
-				-- essence
-				10938, 10939, 10998, 11082, 11134, 11135, 11174, 11175, 16202, 16203,
-				--shard
-				10978, 11084, 11138, 11139, 11177, 11178, 14343, 14344,
-				-- crystal
-				20725,
-				--rod
-				6218, 6339, 11130, 11145, 16207
-			),
-		},
-
-		-- herb
-		{
-			containers = { 22250, 22251, 22252 },
-			items = self:Set(765, 785, 2447, 2449, 2450, 2452, 2453, 3355, 3356, 3357, 3358, 3369, 3818, 3819, 3820, 3821, 4625, 8831, 8836, 8838, 8839, 8845, 8846, 13463, 13464, 13465, 13466, 13467, 13468),
-		},
-	}
-
-	self.MOUNT = self:Set(
+	self.MOUNT = self:set(
 		-- rams
 		5864, 5872, 5873, 18785, 18786, 18787, 18244, 19030, 13328, 13329,
-
 		-- horses
 		2411, 2414, 5655, 5656, 18778, 18776, 18777, 18241, 12353, 12354,
-
 		-- sabers
 		8629, 8631, 8632, 18766, 18767, 18902, 18242, 13086, 19902, 12302, 12303, 8628, 12326,
-
 		-- mechanostriders
 		8563, 8595, 13321, 13322, 18772, 18773, 18774, 18243, 13326, 13327,
-
 		-- kodos
 		15277, 15290, 18793, 18794, 18795, 18247, 15292, 15293,
-
 		-- wolves
 		1132, 5665, 5668, 18796, 18797, 18798, 18245, 12330, 12351,
-
 		-- raptors
 		8588, 8591, 8592, 18788, 18789, 18790, 18246, 19872, 8586, 13317,
-
 		-- undead horses
 		13331, 13332, 13333, 13334, 18791, 18248, 13335,
-
 		-- qiraji battle tanks
 		21218, 21321, 21323, 21324, 21176
 	)
 
-	self.SPECIAL = self:Set(5462, 17696, 17117, 13347, 13289, 11511)
+	self.SPECIAL = self:set(5462, 17696, 17117, 13347, 13289, 11511)
 
-	self.KEY = self:Set(9240, 17191, 13544, 12324, 16309, 12384, 20402)
+	self.KEY = self:set(9240, 17191, 13544, 12324, 16309, 12384, 20402)
 
-	self.TOOL = self:Set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
+	self.TOOL = self:set(7005, 12709, 19727, 5956, 2901, 6219, 10498, 6218, 6339, 11130, 11145, 16207, 9149, 15846, 6256, 6365, 6367)
+
+	self.ENCHANTING_REAGENT = self:set(
+		-- dust
+		10940, 11083, 11137, 11176, 16204,
+		-- essence
+		10938, 10939, 10998, 11082, 11134, 11135, 11174, 11175, 16202, 16203,
+		-- shard
+		10978, 11084, 11138, 11139, 11177, 11178, 14343, 14344,
+		-- crystal
+		20725
+	)
+
+	self.CLASSES = {
+		-- arrow
+		{
+			containers = { 2101, 5439, 7278, 11362, 3573, 3605, 7371, 8217, 2662, 19319, 18714 },
+			items = self:set(2512, 2515, 3030, 3464, 9399, 11285, 12654, 18042, 19316),
+		},
+		-- bullet
+		{
+			containers = { 2102, 5441, 7279, 11363, 3574, 3604, 7372, 8218, 2663, 19320 },
+			items = self:set(2516, 2519, 3033, 3465, 4960, 5568, 8067, 8068, 8069, 10512, 10513, 11284, 11630, 13377, 15997, 19317),
+		},
+		-- soul
+		{
+			containers = { 22243, 22244, 21340, 21341, 21342 },
+			items = self:set(6265),
+		},
+		-- ench
+		{
+			containers = { 22246, 22248, 22249 },
+			items = self:union(
+				self.ENCHANTING_REAGENT,
+				-- rods
+				self:set(6218, 6339, 11130, 11145, 16207)
+			),
+		},
+		-- herb
+		{
+			containers = { 22250, 22251, 22252 },
+			items = self:set(765, 785, 2447, 2449, 2450, 2452, 2453, 3355, 3356, 3357, 3358, 3369, 3818, 3819, 3820, 3821, 4625, 8831, 8836, 8838, 8839, 8845, 8846, 13463, 13464, 13465, 13466, 13467, 13468),
+		},
+	}
 
 	self:SetupSlash()
 
@@ -138,23 +130,24 @@ function self.ADDON_LOADED()
 end
 
 function self:PLAYER_LOGIN()
-	self.PickupContainerItem = PickupContainerItem
-	function PickupContainerItem(...)
-		local container, position = unpack(arg)
-		if IsAltKeyDown() then
-			for item in self:Present(self:Item(container, position)) do
-				local slotKey = self:SlotKey(container, position)
-				_Clean_Up_Settings.assignments[slotKey] = item
-				self:print(slotKey..' assigned to '..item)
+	do
+		local orig = PickupContainerItem
+		function PickupContainerItem(...)
+			local container, position = unpack(arg)
+			if IsAltKeyDown() then
+				for item in self:Present(self:Item(container, position)) do
+					local slotKey = self:SlotKey(container, position)
+					_Clean_Up_Settings.assignments[slotKey] = item
+					self:print(slotKey..' assigned to '..item)
+				end
+			else
+				orig(unpack(arg))
 			end
-		else
-			self.PickupContainerItem(unpack(arg))
 		end
 	end
-
     do
+    	local orig = UseContainerItem
         local lastTime, lastSlot
-		self.UseContainerItem = UseContainerItem
 		function UseContainerItem(...)
 			local container, position = unpack(arg)
 			local slot = self:SlotKey(container, position)
@@ -165,20 +158,20 @@ function self:PLAYER_LOGIN()
 				end
 			else
 				if lastTime and GetTime() - lastTime < .5 and slot == lastSlot then
-					containers = self:Set(unpack(self.bags.containers))[container] and self.bags.containers or self.bank.containers
+					containers = self:set(unpack(self.bags.containers))[container] and self.bags.containers or self.bank.containers
 					local link = GetContainerItemLink(container, position)
 					for _, container in containers do
 						for position = 1, GetContainerNumSlots(container) do
 							if self:SlotKey(container, position) ~= slot and GetContainerItemLink(container, position) == link then
 								arg[1], arg[2] = container, position
-								self.UseContainerItem(unpack(arg))
+								orig(unpack(arg))
 							end
 						end
 					end
 				end
 				lastTime = GetTime()
             	lastSlot = slot
-				self.UseContainerItem(unpack(arg))
+				orig(unpack(arg))
 			end
 		end
 	end
@@ -211,10 +204,20 @@ function self:print(msg)
 	DEFAULT_CHAT_FRAME:AddMessage(LIGHTYELLOW_FONT_COLOR_CODE..'[Clean Up] '..msg)
 end
 
-function self:Set(...)
+function self:set(...)
 	local t = {}
-	for i=1,arg.n do
+	for i = 1, arg.n do
 		t[arg[i]] = true
+	end
+	return t
+end
+
+function self:union(...)
+	local t = {}
+	for i = 1, arg.n do
+		for k in arg[i] do
+			t[k] = true
+		end
 	end
 	return t
 end
@@ -708,36 +711,41 @@ do
 				elseif soulbound then
 					tinsert(sortKey, 6)
 
-				-- reagents
-				elseif type == self.ITEM_TYPES[9] then
+				-- enchanting reagents
+				elseif self.ENCHANTING_REAGENT[itemID] then
 					tinsert(sortKey, 7)
+
+				-- other reagents
+				elseif type == self.ITEM_TYPES[9] then
+					tinsert(sortKey, 8)
 
 				-- quest items
 				elseif quest then
-					tinsert(sortKey, 9)
+					tinsert(sortKey, 10)
 
 				-- consumables
 				elseif usable and type ~= self.ITEM_TYPES[1] and type ~= self.ITEM_TYPES[2] and type ~= self.ITEM_TYPES[8] or type == self.ITEM_TYPES[4] then
-					tinsert(sortKey, 8)
+					tinsert(sortKey, 9)
 
 				-- higher quality
 				elseif quality > 1 then
-					tinsert(sortKey, 10)
+					tinsert(sortKey, 11)
 
 				-- common quality
 				elseif quality == 1 then
-					tinsert(sortKey, 11)
+					tinsert(sortKey, 12)
 
 				-- junk
 				elseif quality == 0 then
-					tinsert(sortKey, 12)
+					tinsert(sortKey, 13)
 				end
-				
+
 				tinsert(sortKey, self:ItemTypeKey(type))
 				tinsert(sortKey, self:ItemInvTypeKey(type, subType, invType))
 				tinsert(sortKey, self:ItemSubTypeKey(type, subType))
+				tinsert(sortKey, -quality)
 				tinsert(sortKey, itemID)
-				tinsert(sortKey, 1/charges)
+				tinsert(sortKey, -charges)
 				tinsert(sortKey, suffixID)
 				tinsert(sortKey, enchantID)
 				tinsert(sortKey, uniqueID)
