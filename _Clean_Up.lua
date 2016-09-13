@@ -135,7 +135,7 @@ function self:PLAYER_LOGIN()
 		function PickupContainerItem(...)
 			local container, position = unpack(arg)
 			if IsAltKeyDown() then
-				for item in self:Present(self:Item(container, position)) do
+				for item in self:Present(self:item(container, position)) do
 					local slotKey = self:SlotKey(container, position)
 					_Clean_Up_Settings.assignments[slotKey] = item
 					self:print(slotKey..' assigned to '..item)
@@ -183,13 +183,12 @@ function self:UPDATE()
 			return
 		end
 	end
-	if not self.model then
+	if self:stack_step() then
+		p'kek'
 		self:CreateModel()
-	end
-	if self:sort_step() then
+		self:sort()
 		self:Hide()
 	end
-	self:stack_step()
 end
 
 function self:MERCHANT_SHOW()
@@ -306,7 +305,7 @@ function self:CreateButton(key)
 			PlaySoundFile[[Interface\AddOns\_Clean_Up\UI_BagSorting_01.ogg]]
 			self:Go(key)
 		elseif arg1 == 'RightButton' then
-			self:toggle_soft_sorting()
+			self:toggle_sorted_view()
 		end
 	end)
 	button:SetScript('OnEnter', function()
@@ -347,34 +346,6 @@ function self:CreateButtonPlacer()
 			this:Hide()
 		end
 	end)
-end
-
-function self:Move(src, dst)
-    local _, _, srcLocked = GetContainerItemInfo(src.container, src.position)
-    local _, _, dstLocked = GetContainerItemInfo(dst.container, dst.position)
-    
-	if not srcLocked and not dstLocked then
-		ClearCursor()
-       	PickupContainerItem(src.container, src.position)
-		PickupContainerItem(dst.container, dst.position)
-
-	    local _, _, srcLocked = GetContainerItemInfo(src.container, src.position)
-	    local _, _, dstLocked = GetContainerItemInfo(dst.container, dst.position)
-    	if srcLocked or dstLocked then
-			if src.state.item == dst.state.item then
-				local count = min(src.state.count, self:Info(dst.state.item).stack - dst.state.count)
-				src.state.count = src.state.count - count
-				dst.state.count = dst.state.count + count
-				if src.count == 0 then
-					src.state.item = nil
-				end
-			else
-				src.state, dst.state = dst.state, src.state
-			end
-		end
-
-		return true
-    end
 end
 
 function self:TooltipInfo(container, position)
@@ -435,7 +406,7 @@ end
 
 do
 	local mapping, enabled = {}, true
-	local function resolvePosition(bag, slot)
+	local function resolve_position(bag, slot)
 		for position in self:Present(enabled and mapping[bag..':'..slot] or nil) do
 			return unpack(position)
 		end
@@ -444,14 +415,14 @@ do
 
 	local function convert_function(f)
 		return function(bag, slot, ...)
-			bag, slot = resolvePosition(bag, slot)
+			bag, slot = resolve_position(bag, slot)
 			return f(bag, slot, unpack(arg))
 		end
 	end
 
 	local function convert_method(f)
 		return function(self, bag, slot, ...)
-			bag, slot = resolvePosition(bag, slot)
+			bag, slot = resolve_position(bag, slot)
 			return f(self, bag, slot, unpack(arg))
 		end
 	end
@@ -493,20 +464,16 @@ do
 
 	function self:Swap(slot1, slot2)
 		slot1.state, slot2.state = slot2.state, slot1.state
-		mapping[key(slot1)], mapping[key(slot2)] = {resolvePosition(slot2.container, slot2.position)}, {resolvePosition(slot1.container, slot1.position)}
+		mapping[key(slot1)], mapping[key(slot2)] = { resolve_position(slot2.container, slot2.position) }, { resolve_position(slot1.container, slot1.position) }
 	end
 
-	function self:sort_step()
+	function self:sort()
 		if not enabled then
-			return true
+			return
 		end
-
-		local complete = true
 
 		for _, dst in self.model do
 			if dst.item and (dst.state.item ~= dst.item or dst.state.count < dst.count) then
-				complete = false
-
 				for _, src in self.model do
 					if src.state.item == dst.item and src.state.count == dst.count and not (src.item and src.state.item == src.item and src.state.count == src.count) then
 						self:Swap(src, dst)
@@ -515,14 +482,10 @@ do
 			end
 		end
 
-		if complete then
-			trigger_bag_update()
-		end
-
-		return complete
+		trigger_bag_update()
 	end
 
-	function self:toggle_soft_sorting()
+	function self:toggle_sorted_view()
 		enabled = not enabled
 		if enabled then
 			self.bags.button:GetNormalTexture():SetDesaturated(false)
@@ -540,15 +503,32 @@ do
 end
 
 function self:stack_step()
-	for _, src in self.model do
-		if src.state.item and src.state.count < self:Info(src.state.item).stack then
-			for _, dst in self.model do
-				if dst ~= src and dst.state.item and dst.state.item == src.state.item and dst.state.count < self:Info(dst.state.item).stack then
-					self:Move(src, dst)
+	local complete = true
+	for _, container in self.containers do
+		for position = 1, GetContainerNumSlots(container) do
+			local name, count, locked = GetContainerItemInfo(container, position)
+			local max_stack = self:max_stack(container, position)
+			if name and count < max_stack then
+				for _, container2 in self.containers do
+					for position2 = 1, GetContainerNumSlots(container2) do
+						if container2 ~= container or position2 ~= position then
+							local name2, count2, locked2 = GetContainerItemInfo(container2, position2)
+							local max_stack2 = self:max_stack(container2, position2)
+							if name2 == name and count2 < max_stack2 then
+								complete = false
+								if not (locked or locked2) then
+									ClearCursor()
+							       	PickupContainerItem(container, position)
+									PickupContainerItem(container2, position2)
+								end
+							end
+						end
+					end
 				end
 			end
 		end
 	end
+	return complete
 end
 
 function self:Go(key)
@@ -570,7 +550,7 @@ do
 
 	local function assign(slot, item)
 		if counts[item] > 0 then
-			local count = min(counts[item], self:Info(item).stack)
+			local count = min(counts[item], self:info(item).stack)
 			slot.item = item
 			slot.count = count
 			counts[item] = counts[item] - count
@@ -593,7 +573,7 @@ do
 			for _, slot in self.model do
 				if slot.class == key and not slot.item then
 					for _, item in items do
-						if self:Info(item).class == key and assign(slot, item) then
+						if self:info(item).class == key and assign(slot, item) then
 							break
 						end
 				    end
@@ -620,12 +600,12 @@ do
 
 		for _, container in self.containers do
 			local class = self:Class(container)
-			for position=1,GetContainerNumSlots(container) do
-				local slot = {container=container, position=position, class=class}
-				local item = self:Item(container, position)
+			for position = 1, GetContainerNumSlots(container) do
+				local slot = { container=container, position=position, class=class }
+				local item = self:item(container, position)
 				if item then
 					local _, count = GetContainerItemInfo(container, position)
-					slot.state = {item=item, count=count}
+					slot.state = { item=item, count=count }
 					counts[item] = (counts[item] or 0) + count
 				else
 					slot.state = {}
@@ -637,7 +617,7 @@ do
 		for item, _ in counts do
 			tinsert(items, item)
 		end
-		sort(items, function(a, b) return self:LT(self:Info(a).sortKey, self:Info(b).sortKey) end)
+		sort(items, function(a, b) return self:LT(self:info(a).sortKey, self:info(b).sortKey) end)
 
 		assignCustom()
 		assignSpecial()
@@ -665,12 +645,24 @@ end
 
 do
 	local cache = {}
+	function self:max_stack(bag, slot)
+		local link = GetContainerItemLink(bag, slot)
+		if link and not cache[link] then
+			local _, _, itemID = strfind(link, 'item:(%d+)')
+			cache[link] = ({GetItemInfo(itemID)})[7]
+		end
+		return link and cache[link]
+	end
+end
 
-	function self:Info(item)
+do
+	local cache = {}
+
+	function self:info(item)
 		return setmetatable({}, {__index=cache[item]})
 	end
 
-	function self:Item(container, position)
+	function self:item(container, position)
 		for link in self:Present(GetContainerItemLink(container, position)) do
 			local _, _, itemID, enchantID, suffixID, uniqueID = strfind(link, 'item:(%d+):(%d*):(%d*):(%d*)')
 			itemID = tonumber(itemID)
