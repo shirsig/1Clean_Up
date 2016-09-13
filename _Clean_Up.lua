@@ -186,17 +186,17 @@ end
 
 function self:UPDATE()
 	if self.containers == self.bags.containers and not self.model then
-		if self:SellTrash() then
+		if self:vendor_step() then
 			return
 		end
 	end
 	if not self.model then
 		self:CreateModel()
 	end
-	if self:soft_sort_step() then
+	if self:sort_step() then
 		self:Hide()
 	end
-	self:Stack()
+	self:stack_step()
 end
 
 function self:MERCHANT_SHOW()
@@ -415,7 +415,7 @@ function self:Trash(container, position)
 	end
 end
 
-function self:SellTrash()
+function self:vendor_step()
 	local found
 	if self.atMerchant then
 		for _, container in self.bags.containers do
@@ -493,7 +493,7 @@ do
 		mapping[key(slot1)], mapping[key(slot2)] = {resolvePosition(slot2.container, slot2.position)}, {resolvePosition(slot1.container, slot1.position)}
 	end
 
-	function self:soft_sort_step()
+	function self:sort_step()
 		if not enabled then
 			return true
 		end
@@ -523,49 +523,20 @@ do
 		enabled = not enabled
 		if enabled then
 			self.bags.button:GetNormalTexture():SetDesaturated(false)
+			self.bags.button:GetPushedTexture():SetDesaturated(false)
 			self.bank.button:GetNormalTexture():SetDesaturated(false)
+			self.bank.button:GetPushedTexture():SetDesaturated(false)
 		else
 			self.bags.button:GetNormalTexture():SetDesaturated(true)
+			self.bags.button:GetPushedTexture():SetDesaturated(true)
 			self.bank.button:GetNormalTexture():SetDesaturated(true)
+			self.bank.button:GetPushedTexture():SetDesaturated(true)
 		end
 		trigger_bag_update()
 	end
 end
 
-function self:hard_sort_step()
-	local complete = true
-
-	for _, dst in self.model do
-		if dst.item and (dst.state.item ~= dst.item or dst.state.count < dst.count) then
-			complete = false
-
-			local sources, rank = {}, {}
-
-			for _, src in self.model do
-				if src.state.item == dst.item
-					and src ~= dst
-					and not (dst.state.item and src.class and src.class ~= self:Info(dst.state.item).class)
-					and not (src.item and src.state.item == src.item and src.state.count <= src.count)
-				then
-					rank[src] = abs(src.state.count - dst.count + (dst.state.item == dst.item and dst.state.count or 0))
-					tinsert(sources, src)
-				end
-			end
-
-			sort(sources, function(a, b) return rank[a] < rank[b] end)
-
-			for _, src in sources do
-				if self:Move(src, dst) then
-					break
-				end
-			end
-		end
-	end
-
-	return complete
-end
-
-function self:Stack()
+function self:stack_step()
 	for _, src in self.model do
 		if src.state.item and src.state.count < self:Info(src.state.item).stack then
 			for _, dst in self.model do
