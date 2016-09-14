@@ -135,10 +135,10 @@ function self:PLAYER_LOGIN()
 		function PickupContainerItem(...)
 			local container, position = unpack(arg)
 			if IsAltKeyDown() then
-				for item in self:Present(self:item(container, position)) do
-					local slotKey = self:SlotKey(container, position)
-					_Clean_Up_Settings.assignments[slotKey] = item
-					self:print(slotKey..' assigned to '..item)
+				for link in self:Present(GetContainerItemLink(container, position)) do
+					local slot_key = self:slot_key(container, position)
+					_Clean_Up_Settings.assignments[slot_key] = link
+					self:print(slot_key .. ' assigned to ' .. link)
 				end
 			else
 				orig(unpack(arg))
@@ -150,11 +150,11 @@ function self:PLAYER_LOGIN()
         local lastTime, lastSlot
 		function UseContainerItem(...)
 			local container, position = unpack(arg)
-			local slot = self:SlotKey(container, position)
+			local slot_key = self:slot_key(container, position)
 			if IsAltKeyDown() then
-				if _Clean_Up_Settings.assignments[slot] then
-					_Clean_Up_Settings.assignments[slot] = nil
-					self:print(slot..' freed')
+				if _Clean_Up_Settings.assignments[slot_key] then
+					_Clean_Up_Settings.assignments[slot_key] = nil
+					self:print(slot_key .. ' freed')
 				end
 			else
 				if lastTime and GetTime() - lastTime < .5 and slot == lastSlot then
@@ -162,7 +162,7 @@ function self:PLAYER_LOGIN()
 					local link = GetContainerItemLink(container, position)
 					for _, container in containers do
 						for position = 1, GetContainerNumSlots(container) do
-							if self:SlotKey(container, position) ~= slot and GetContainerItemLink(container, position) == link then
+							if self:slot_key(container, position) ~= slot and GetContainerItemLink(container, position) == link then
 								arg[1], arg[2] = container, position
 								orig(unpack(arg))
 							end
@@ -243,7 +243,7 @@ function self:Key(table, value)
 	end
 end
 
-function self:SlotKey(container, position)
+function self:slot_key(container, position)
 	return container..':'..position
 end
 
@@ -446,12 +446,8 @@ do
 
 -- GameTooltip.SetInventoryItem('player', BankButtonIDToInvSlotID(position))
 
-	local function key(slot)
-		return slot[1]..':'..slot[2]
-	end
-
 	function self:swap(slot1, slot2)
-		mapping[key(slot1)], mapping[key(slot2)] = { resolve_position(unpack(slot2)) }, { resolve_position(unpack(slot1)) }
+		mapping[self:slot_key(unpack(slot1))], mapping[self:slot_key(unpack(slot2))] = { resolve_position(unpack(slot2)) }, { resolve_position(unpack(slot1)) }
 	end
 
 	function self:toggle_sorted_view()
@@ -469,72 +465,66 @@ do
 		end
 		self:trigger_bag_update()
 	end
+end
 
-	do
-		local items, counts
+function self:sort()
+	local slots, item_slots = {}, {}
 
-		local function insert(t, v)
-			if _Clean_Up_Settings.reversed then
-				tinsert(t, v)
-			else
-				tinsert(t, 1, v)
+	for _, container in self.containers do
+		local class = self:Class(container)
+		for position = 1, GetContainerNumSlots(container) do
+			local slot = { container, position, class=class }
+			if _Clean_Up_Settings.reversed then tinsert(slots, slot) else tinsert(slots, 1, slot) end
+			for item_info in self:Present(self:info(container, position)) do
+				slot.item = item_info
+				tinsert(item_slots, slot)
 			end
 		end
+	end
 
-		function self:sort()
-			local slots, item_slots = {}, {}
+	sort(item_slots, function(a, b) return self:lt(a.item.sort_key, b.item.sort_key) end)
 
-			for _, container in self.containers do
-				local class = self:Class(container)
-				for position = 1, GetContainerNumSlots(container) do
-					local slot = { container, position, class=class }
-					insert(slots, slot)
-					for item_info in self:Present(self:info(container, position)) do
-						slot.item = { sort_key=item_info.sort_key, class=item_info.class }
-						tinsert(item_slots, slot)
-					end
+	local function fill(slot, src)
+		self:swap(slot, src)
+		src.item = slot.item
+		for i = 1, getn(item_slots) do
+			if item_slots[i] == slot then
+				item_slots[i] = src
+			end
+		end
+		slot.filled = true
+	end
+
+	for _, slot in slots do
+		for link in self:Present(_Clean_Up_Settings.assignments[self:slot_key(unpack(slot))]) do
+			for i, src in item_slots do
+				if src.item.link == link then
+					fill(slot, src)
+					tremove(item_slots, i)
+					break
 				end
 			end
-			sort(item_slots, function(a, b) return self:lt(a.item.sort_key, b.item.sort_key) end)
+		end
+	end
 
-			local function fill(slot, src)
-				self:swap(slot, src)
-				src.item = slot.item
-				for i = 1, getn(item_slots) do
-					if item_slots[i] == slot then
-						item_slots[i] = src
-					end
-				end
-				slot.filled = true
-			end
-
-			-- for _, slot in slots do
-			-- 	for item in self:Present(_Clean_Up_Settings.assignments[self:SlotKey(slot.container, slot.position)]) do
-			-- 		if counts[item] then
-			-- 			assign(slot, item)
-			-- 		end
-			-- 	end
-			-- end
-
-			for key, class in self.CLASSES do
-				for _, slot in slots do
-					if slot.class == key and not slot.filled then
-						for _, src in item_slots do
-							if src.item.class == key then
-								fill(slot, src)
-								break
-							end
-					    end
-				    end
-				end
-			end
-
-			for _, slot in slots do
-				if not slot.filled then
-					for src in self:Present(tremove(item_slots, 1)) do
+	for key, class in self.CLASSES do
+		for _, slot in slots do
+			if slot.class == key and not slot.filled then
+				for i, src in item_slots do
+					if src.item.class == key then
 						fill(slot, src)
+						tremove(item_slots, i)
+						break
 					end
-				end
+			    end
+		    end
+		end
+	end
+
+	for _, slot in slots do
+		if not slot.filled then
+			for src in self:Present(tremove(item_slots, 1)) do
+				fill(slot, src)
 			end
 		end
 	end
@@ -703,6 +693,7 @@ do
 				tinsert(sort_key, uniqueID)
 
 				cache[key] = {
+					link = link,
 					sort_key = sort_key,
 				}
 
