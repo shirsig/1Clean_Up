@@ -186,7 +186,7 @@ function self:UPDATE()
 
 	if self:stack_step() then
 		self:CreateModel()
-		-- self:sort()
+		self:sort()
 		self:Hide()
 	end
 end
@@ -509,12 +509,10 @@ function self:stack_step()
 		for position = 1, GetContainerNumSlots(container) do
 			local name, count, locked = GetContainerItemInfo(container, position)
 			local max_stack = self:max_stack(container, position)
+			complete = complete and not locked
 			if name and count < max_stack and not locked then
-				if partial_stacks[name] then
-					complete = false
-				else
-					partial_stacks[name] = {}
-				end
+				complete = complete and not partial_stacks[name]
+				partial_stacks[name] = partial_stacks[name] or {}
 				tinsert(partial_stacks[name], {container, position})
 			end
 		end
