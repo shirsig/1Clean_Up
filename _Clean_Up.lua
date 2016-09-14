@@ -175,6 +175,9 @@ function self:PLAYER_LOGIN()
 			end
 		end
 	end
+
+	self.containers = self.bags.containers
+	self:sort()
 end
 
 function self:UPDATE()
