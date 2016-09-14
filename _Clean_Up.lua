@@ -183,10 +183,10 @@ function self:UPDATE()
 			return
 		end
 	end
+
 	if self:stack_step() then
-		p'kek'
 		self:CreateModel()
-		self:sort()
+		-- self:sort()
 		self:Hide()
 	end
 end
@@ -504,28 +504,30 @@ end
 
 function self:stack_step()
 	local complete = true
+	local partial_stacks = {}
 	for _, container in self.containers do
 		for position = 1, GetContainerNumSlots(container) do
 			local name, count, locked = GetContainerItemInfo(container, position)
 			local max_stack = self:max_stack(container, position)
-			if name and count < max_stack then
-				for _, container2 in self.containers do
-					for position2 = 1, GetContainerNumSlots(container2) do
-						if container2 ~= container or position2 ~= position then
-							local name2, count2, locked2 = GetContainerItemInfo(container2, position2)
-							local max_stack2 = self:max_stack(container2, position2)
-							if name2 == name and count2 < max_stack2 then
-								complete = false
-								if not (locked or locked2) then
-									ClearCursor()
-							       	PickupContainerItem(container, position)
-									PickupContainerItem(container2, position2)
-								end
-							end
-						end
-					end
+			if name and count < max_stack and not locked then
+				if partial_stacks[name] then
+					complete = false
+				else
+					partial_stacks[name] = {}
 				end
+				tinsert(partial_stacks[name], {container, position})
 			end
+		end
+	end
+	for _, slots in partial_stacks do
+		while true do
+			local src, dst = tremove(slots), tremove(slots)
+			if not (src and dst) then
+				break
+			end
+			ClearCursor()
+	       	PickupContainerItem(unpack(src))
+			PickupContainerItem(unpack(dst))
 		end
 	end
 	return complete
