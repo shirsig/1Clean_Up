@@ -178,15 +178,15 @@ function self:PLAYER_LOGIN()
 end
 
 function self:UPDATE()
-	if self.containers == self.bags.containers and not self.model then
+	if self.containers == self.bags.containers and self.model then
 		if self:vendor_step() then
 			return
 		end
 	end
 
 	if self:stack_step() then
-		self:CreateModel()
 		self:sort()
+		self:trigger_bag_update()
 		self:Hide()
 	end
 end
@@ -221,7 +221,7 @@ function self:union(...)
 	return t
 end
 
-function self:LT(a, b)
+function self:lt(a, b)
 	local i = 1
 	while true do
 		if a[i] and b[i] and a[i] ~= b[i] then
@@ -378,7 +378,7 @@ function self:TooltipInfo(container, position)
 		end
 	end
 
-	return charges or 1, usable, soulbound, quest, conjured
+	return charges, usable, soulbound, quest, conjured
 end
 
 function self:Trash(container, position)
@@ -406,6 +406,7 @@ end
 
 do
 	local mapping, enabled = {}, true
+
 	local function resolve_position(bag, slot)
 		for position in self:Present(enabled and mapping[bag..':'..slot] or nil) do
 			return unpack(position)
@@ -445,44 +446,12 @@ do
 
 -- GameTooltip.SetInventoryItem('player', BankButtonIDToInvSlotID(position))
 
-	local function trigger_bag_update()
-		for container = -1, 10 do
-			for position = 1, GetContainerNumSlots(container) do
-				local name, _, locked = GetContainerItemInfo(container, position)
-				if name and not locked then
-					PickupContainerItem(container, position)
-					ClearCursor()
-					return
-				end
-			end
-		end
-	end
-
 	local function key(slot)
-		return slot.container..':'..slot.position
+		return slot[1]..':'..slot[2]
 	end
 
-	function self:Swap(slot1, slot2)
-		slot1.state, slot2.state = slot2.state, slot1.state
-		mapping[key(slot1)], mapping[key(slot2)] = { resolve_position(slot2.container, slot2.position) }, { resolve_position(slot1.container, slot1.position) }
-	end
-
-	function self:sort()
-		if not enabled then
-			return
-		end
-
-		for _, dst in self.model do
-			if dst.item and (dst.state.item ~= dst.item or dst.state.count < dst.count) then
-				for _, src in self.model do
-					if src.state.item == dst.item and src.state.count == dst.count and not (src.item and src.state.item == src.item and src.state.count == src.count) then
-						self:Swap(src, dst)
-					end
-				end
-			end
-		end
-
-		trigger_bag_update()
+	function self:swap(slot1, slot2)
+		mapping[key(slot1)], mapping[key(slot2)] = { resolve_position(unpack(slot2)) }, { resolve_position(unpack(slot1)) }
 	end
 
 	function self:toggle_sorted_view()
@@ -498,7 +467,97 @@ do
 			self.bank.button:GetNormalTexture():SetDesaturated(true)
 			self.bank.button:GetPushedTexture():SetDesaturated(true)
 		end
-		trigger_bag_update()
+		self:trigger_bag_update()
+	end
+
+	do
+		local items, counts
+
+		local function insert(t, v)
+			if _Clean_Up_Settings.reversed then
+				tinsert(t, v)
+			else
+				tinsert(t, 1, v)
+			end
+		end
+
+		function self:sort()
+			local slots, filled_slots = {}, {}
+
+			for _, container in self.containers do
+				local class = self:Class(container)
+				for position = 1, GetContainerNumSlots(container) do
+					local slot = { container, position, class=class }
+					insert(slots, slot)
+					for item_info in self:Present(self:info(container, position)) do
+						local _, count = GetContainerItemInfo(container, position)
+						slot.contents = { sort_key=item_info.sort_key, class=item_info.class, count=count }
+						tinsert(filled_slots, slot)
+					end
+				end
+			end
+			sort(filled_slots, function(a, b) return self:lt(a.contents.sort_key, b.contents.sort_key) end)
+
+			for _, slot in slots do
+				for filled_slot in self:Present(tremove(filled_slots, 1)) do
+					self:swap(filled_slot, slot)
+					slot[1], slot[2] = filled_slot[1], filled_slot[2]
+				end
+			end
+
+			-- assignCustom()
+			-- assignSpecial()
+			-- assignRemaining()
+		end
+
+			-- local function assignCustom()
+		-- 	for _, slot in self.model do
+		-- 		for item in self:Present(_Clean_Up_Settings.assignments[self:SlotKey(slot.container, slot.position)]) do
+		-- 			if counts[item] then
+		-- 				assign(slot, item)
+		-- 			end
+		-- 		end
+		-- 	end
+		-- end
+
+		-- local function assignSpecial()
+		-- 	for key, class in self.CLASSES do
+		-- 		for _, slot in self.model do
+		-- 			if slot.class == key and not slot.item then
+		-- 				for _, item in items do
+		-- 					if self:info(item).class == key and assign(slot, item) then
+		-- 						break
+		-- 					end
+		-- 			    end
+		-- 		    end
+		-- 		end
+		-- 	end
+		-- end
+
+		-- local function assignRemaining()
+		-- 	for _, slot in self.model do
+		-- 		if not slot.class and not slot.item then
+		-- 			for _, item in items do
+		-- 				if assign(slot, item) then
+		-- 					break
+		-- 				end
+		-- 		    end
+		-- 	    end
+		-- 	end
+		-- end
+	end
+end
+
+function self:trigger_bag_update()
+	for container = -1, 10 do
+		for position = 1, GetContainerNumSlots(container) do
+			local name, _, locked = GetContainerItemInfo(container, position)
+			if name and not locked then
+				PickupContainerItem(container, position)
+				ClearCursor()
+				return
+			end
+		end
 	end
 end
 
@@ -533,96 +592,7 @@ end
 
 function self:Go(key)
 	self.containers = self[key].containers
-	self.model = nil
 	self:Show()
-end
-
-do
-	local items, counts
-
-	local function insert(t, v)
-		if _Clean_Up_Settings.reversed then
-			tinsert(t, v)
-		else
-			tinsert(t, 1, v)
-		end
-	end
-
-	local function assign(slot, item)
-		if counts[item] > 0 then
-			local count = min(counts[item], self:info(item).stack)
-			slot.item = item
-			slot.count = count
-			counts[item] = counts[item] - count
-			return true
-		end
-	end
-
-	local function assignCustom()
-		for _, slot in self.model do
-			for item in self:Present(_Clean_Up_Settings.assignments[self:SlotKey(slot.container, slot.position)]) do
-				if counts[item] then
-					assign(slot, item)
-				end
-			end
-		end
-	end
-
-	local function assignSpecial()
-		for key, class in self.CLASSES do
-			for _, slot in self.model do
-				if slot.class == key and not slot.item then
-					for _, item in items do
-						if self:info(item).class == key and assign(slot, item) then
-							break
-						end
-				    end
-			    end
-			end
-		end
-	end
-
-	local function assignRemaining()
-		for _, slot in self.model do
-			if not slot.class and not slot.item then
-				for _, item in items do
-					if assign(slot, item) then
-						break
-					end
-			    end
-		    end
-		end
-	end
-
-	function self:CreateModel()
-		self.model = {}
-		counts = {}
-
-		for _, container in self.containers do
-			local class = self:Class(container)
-			for position = 1, GetContainerNumSlots(container) do
-				local slot = { container=container, position=position, class=class }
-				local item = self:item(container, position)
-				if item then
-					local _, count = GetContainerItemInfo(container, position)
-					slot.state = { item=item, count=count }
-					counts[item] = (counts[item] or 0) + count
-				else
-					slot.state = {}
-				end
-				insert(self.model, slot)
-			end
-		end
-		items = {}
-		for item, _ in counts do
-			tinsert(items, item)
-		end
-		sort(items, function(a, b) return self:LT(self:info(a).sortKey, self:info(b).sortKey) end)
-
-		assignCustom()
-		assignSpecial()
-		assignRemaining()
-	end
 end
 
 do
@@ -645,6 +615,7 @@ end
 
 do
 	local cache = {}
+
 	function self:max_stack(bag, slot)
 		local link = GetContainerItemLink(bag, slot)
 		if link and not cache[link] then
@@ -658,93 +629,89 @@ end
 do
 	local cache = {}
 
-	function self:info(item)
-		return setmetatable({}, {__index=cache[item]})
-	end
-
-	function self:item(container, position)
+	function self:info(container, position)
 		for link in self:Present(GetContainerItemLink(container, position)) do
+			local _, count = GetContainerItemInfo(container, position)
 			local _, _, itemID, enchantID, suffixID, uniqueID = strfind(link, 'item:(%d+):(%d*):(%d*):(%d*)')
 			itemID = tonumber(itemID)
 			local _, _, quality, _, type, subType, stack, invType = GetItemInfo(itemID)
 			local charges, usable, soulbound, quest, conjured = self:TooltipInfo(container, position)
 
-			local key = format('%s:%s:%s:%s:%s:%s', itemID, enchantID, suffixID, uniqueID, charges, (soulbound and 1 or 0))
+			local key = format('%s:%s:%s:%s:%s:%s', itemID, enchantID, suffixID, uniqueID, charges or count, (soulbound and 1 or 0))
 
 			if not cache[key] then
 
-				local sortKey = {}
+				local sort_key = {}
 
 				-- hearthstone
 				if itemID == 6948 then
-					tinsert(sortKey, 1)
+					tinsert(sort_key, 1)
 
 				-- mounts
 				elseif self.MOUNT[itemID] then
-					tinsert(sortKey, 2)
+					tinsert(sort_key, 2)
 
 				-- special items
 				elseif self.SPECIAL[itemID] then
-					tinsert(sortKey, 3)
+					tinsert(sort_key, 3)
 
 				-- key items
 				elseif self.KEY[itemID] then
-					tinsert(sortKey, 4)
+					tinsert(sort_key, 4)
 
 				-- tools
 				elseif self.TOOL[itemID] then
-					tinsert(sortKey, 5)
+					tinsert(sort_key, 5)
 
 				-- conjured items
 				elseif conjured then
-					tinsert(sortKey, 13)
+					tinsert(sort_key, 13)
 
 				-- soulbound items
 				elseif soulbound then
-					tinsert(sortKey, 6)
+					tinsert(sort_key, 6)
 
 				-- enchanting reagents
 				elseif self.ENCHANTING_REAGENT[itemID] then
-					tinsert(sortKey, 7)
+					tinsert(sort_key, 7)
 
 				-- other reagents
 				elseif type == self.ITEM_TYPES[9] then
-					tinsert(sortKey, 8)
+					tinsert(sort_key, 8)
 
 				-- quest items
 				elseif quest then
-					tinsert(sortKey, 10)
+					tinsert(sort_key, 10)
 
 				-- consumables
 				elseif usable and type ~= self.ITEM_TYPES[1] and type ~= self.ITEM_TYPES[2] and type ~= self.ITEM_TYPES[8] or type == self.ITEM_TYPES[4] then
-					tinsert(sortKey, 9)
+					tinsert(sort_key, 9)
 
 				-- higher quality
 				elseif quality > 1 then
-					tinsert(sortKey, 11)
+					tinsert(sort_key, 11)
 
 				-- common quality
 				elseif quality == 1 then
-					tinsert(sortKey, 12)
+					tinsert(sort_key, 12)
 
 				-- junk
 				elseif quality == 0 then
-					tinsert(sortKey, 13)
+					tinsert(sort_key, 13)
 				end
 
-				tinsert(sortKey, self:ItemTypeKey(type))
-				tinsert(sortKey, self:ItemInvTypeKey(type, subType, invType))
-				tinsert(sortKey, self:ItemSubTypeKey(type, subType))
-				tinsert(sortKey, -quality)
-				tinsert(sortKey, itemID)
-				tinsert(sortKey, -charges)
-				tinsert(sortKey, suffixID)
-				tinsert(sortKey, enchantID)
-				tinsert(sortKey, uniqueID)
+				tinsert(sort_key, self:ItemTypeKey(type))
+				tinsert(sort_key, self:ItemInvTypeKey(type, subType, invType))
+				tinsert(sort_key, self:ItemSubTypeKey(type, subType))
+				tinsert(sort_key, -quality)
+				tinsert(sort_key, itemID)
+				tinsert(sort_key, -(charges or count))
+				tinsert(sort_key, suffixID)
+				tinsert(sort_key, enchantID)
+				tinsert(sort_key, uniqueID)
 
 				cache[key] = {
-					stack = stack,
-					sortKey = sortKey,
+					sort_key = sort_key,
 				}
 
 				for class, info in self.CLASSES do
@@ -754,7 +721,7 @@ do
 				end
 			end
 
-			return key
+			return cache[key]
 		end
 	end
 end
