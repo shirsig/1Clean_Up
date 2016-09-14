@@ -497,46 +497,46 @@ do
 			end
 			sort(item_slots, function(a, b) return self:lt(a.item.sort_key, b.item.sort_key) end)
 
-			for _, slot in slots do
-				for item_slot in self:Present(tremove(item_slots, 1)) do
-					self:swap(slot, item_slot)
-					item_slot.item = slot.item
-					for i = 1, getn(item_slots) do
-						if item_slots[i] == slot then
-							item_slots[i] = item_slot
-						end
+			local function fill(slot, src)
+				self:swap(slot, src)
+				src.item = slot.item
+				for i = 1, getn(item_slots) do
+					if item_slots[i] == slot then
+						item_slots[i] = src
 					end
+				end
+				slot.filled = true
+			end
+
+			-- for _, slot in slots do
+			-- 	for item in self:Present(_Clean_Up_Settings.assignments[self:SlotKey(slot.container, slot.position)]) do
+			-- 		if counts[item] then
+			-- 			assign(slot, item)
+			-- 		end
+			-- 	end
+			-- end
+
+			for key, class in self.CLASSES do
+				for _, slot in slots do
+					if slot.class == key and not slot.filled then
+						for _, src in item_slots do
+							if src.item.class == key then
+								fill(slot, src)
+								break
+							end
+					    end
+				    end
 				end
 			end
 
-			-- assignCustom()
-			-- assignSpecial()
-			-- assignRemaining()
+			for _, slot in slots do
+				if not slot.filled then
+					for src in self:Present(tremove(item_slots, 1)) do
+						fill(slot, src)
+					end
+				end
+			end
 		end
-
-			-- local function assignCustom()
-		-- 	for _, slot in self.model do
-		-- 		for item in self:Present(_Clean_Up_Settings.assignments[self:SlotKey(slot.container, slot.position)]) do
-		-- 			if counts[item] then
-		-- 				assign(slot, item)
-		-- 			end
-		-- 		end
-		-- 	end
-		-- end
-
-		-- local function assignSpecial()
-		-- 	for key, class in self.CLASSES do
-		-- 		for _, slot in self.model do
-		-- 			if slot.class == key and not slot.item then
-		-- 				for _, item in items do
-		-- 					if self:info(item).class == key and assign(slot, item) then
-		-- 						break
-		-- 					end
-		-- 			    end
-		-- 		    end
-		-- 		end
-		-- 	end
-		-- end
 	end
 end
 
