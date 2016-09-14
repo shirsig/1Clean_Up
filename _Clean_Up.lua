@@ -482,7 +482,7 @@ do
 		end
 
 		function self:sort()
-			local slots, filled_slots = {}, {}
+			local slots, item_slots = {}, {}
 
 			for _, container in self.containers do
 				local class = self:Class(container)
@@ -490,18 +490,22 @@ do
 					local slot = { container, position, class=class }
 					insert(slots, slot)
 					for item_info in self:Present(self:info(container, position)) do
-						local _, count = GetContainerItemInfo(container, position)
-						slot.contents = { sort_key=item_info.sort_key, class=item_info.class, count=count }
-						tinsert(filled_slots, slot)
+						slot.item = { sort_key=item_info.sort_key, class=item_info.class }
+						tinsert(item_slots, slot)
 					end
 				end
 			end
-			sort(filled_slots, function(a, b) return self:lt(a.contents.sort_key, b.contents.sort_key) end)
+			sort(item_slots, function(a, b) return self:lt(a.item.sort_key, b.item.sort_key) end)
 
 			for _, slot in slots do
-				for filled_slot in self:Present(tremove(filled_slots, 1)) do
-					self:swap(filled_slot, slot)
-					slot[1], slot[2] = filled_slot[1], filled_slot[2]
+				for item_slot in self:Present(tremove(item_slots, 1)) do
+					self:swap(slot, item_slot)
+					item_slot.item = slot.item
+					for i = 1, getn(item_slots) do
+						if item_slots[i] == slot then
+							item_slots[i] = item_slot
+						end
+					end
 				end
 			end
 
@@ -531,18 +535,6 @@ do
 		-- 			    end
 		-- 		    end
 		-- 		end
-		-- 	end
-		-- end
-
-		-- local function assignRemaining()
-		-- 	for _, slot in self.model do
-		-- 		if not slot.class and not slot.item then
-		-- 			for _, item in items do
-		-- 				if assign(slot, item) then
-		-- 					break
-		-- 				end
-		-- 		    end
-		-- 	    end
 		-- 	end
 		-- end
 	end
