@@ -2,9 +2,11 @@ local self = CreateFrame'Frame'
 self:Hide()
 self:SetScript('OnUpdate', function() this:UPDATE() end)
 self:SetScript('OnEvent', function() this[event](this) end)
-for _, event in { 'ADDON_LOADED', 'PLAYER_LOGIN', 'MERCHANT_SHOW', 'MERCHANT_CLOSED' } do
+for _, event in { 'ADDON_LOADED', 'PLAYER_LOGIN', 'BAG_UPDATE', 'PLAYERBANKSLOTS_CHANGED', 'BANKFRAME_OPENED', 'BANKFRAME_CLOSED', 'MERCHANT_SHOW', 'MERCHANT_CLOSED' } do
 	self:RegisterEvent(event)
 end
+
+local BAGS, BANK = 'BAGS', 'BANK'
 
 Clean_Up_Settings = {
 	reversed = false,
@@ -12,8 +14,6 @@ Clean_Up_Settings = {
 	BAGS = {},
 	BANK = {},
 }
-
-local BAGS, BANK = 'BAGS', 'BANK'
 
 local CONTAINERS = {
 	BAGS = { 0, 1, 2, 3, 4 },
@@ -202,9 +202,25 @@ function self:UPDATE()
 
 	if self:stack_step() then
 		self:sort()
-		self:trigger_update()
+		self.container_updater:Show()
 		self:Hide()
 	end
+end
+
+function self:BAG_UPDATE()
+	self.container_updater:Show()
+end
+
+function self:PLAYERBANKSLOTS_CHANGED()
+	self.container_updater:Show()
+end
+
+function self:BANKFRAME_OPENED()
+	self.at_bank = true
+end
+
+function self:BANKFRAME_CLOSED()
+	self.at_bank = false
 end
 
 function self:MERCHANT_SHOW()
@@ -426,19 +442,10 @@ end
 do
 	local mapping, enabled = {}, true
 
-	local function resolve_position(bag, slot, reversed)
-		if reversed then
-			for key, position in mapping do
-				if position[1] == bag and position[2] == slot then
-					local _, _, bag, slot = strfind(key, '(%-?%d+):(%d+)')
-					return bag, slot
-				end
-			end
-		else
-			local key = bag .. ':' .. slot
-			for position in self:present(enabled and mapping[key] or nil) do
-				return unpack(position)
-			end
+	local function resolve_position(bag, slot)
+		local key = bag .. ':' .. slot
+		for position in self:present(enabled and mapping[key] or nil) do
+			return unpack(position)
 		end
 		return bag, slot
 	end
@@ -506,42 +513,47 @@ do
 			BUTTON[self.key]:GetNormalTexture():SetDesaturated(true)
 			BUTTON[self.key]:GetPushedTexture():SetDesaturated(true)
 		end
-		self:trigger_update()
+		self.container_updater:Show()
 	end
 end
 
 do
 	local nop = function() end
-	function self:trigger_update()
-		event = 'BAG_UPDATE'
-		for _, container in CONTAINERS[self.key] do
-			arg1 = container
-			local frame = self
-			while true do
-				frame = EnumerateFrames(frame)
-				if not frame then
-					break
-				end
-				this = frame
-				pcall(frame.GetScript and frame:GetScript('OnEvent') or nop)
+	self.container_updater = CreateFrame'Frame'
+	self.container_updater:SetScript('OnUpdate', function()
+		this:Hide()
+
+		local handlers = {}
+		local frame = self
+		while true do
+			frame = EnumerateFrames(frame)
+			if not frame then break end
+			if frame.GetScript then
+				handlers[frame] = frame:GetScript('OnEvent')
 			end
 		end
 
-		if self.key == BANK then
-			event = 'BANKFRAME_OPENED'
+		event = 'BAG_UPDATE'
+		for container = -1, 10 do
+			arg1 = container
+			for frame, handler in handlers do
+				this = frame
+				pcall(handler)
+			end
+		end
+
+		if self.at_bank then
+			event = 'PLAYERBANKSLOTS_CHANGED'
 			this = BankFrame
 			BankFrame_OnEvent()
 			local frame = self
-			while true do
-				frame = EnumerateFrames(frame)
-				if not frame then
-					break
-				end
+			for frame, handler in handlers do
 				this = frame
-				pcall(frame.GetScript and frame:GetScript('OnEvent') or nop)
+				pcall(handler)
 			end
 		end
-	end
+	end)
+	self.container_updater:Hide()
 end
 
 function self:sort()
