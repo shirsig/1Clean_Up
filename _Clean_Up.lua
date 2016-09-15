@@ -296,6 +296,7 @@ function self:UpdateButton(key)
 	local button, settings = self[key].button, _Clean_Up_Settings[key]
 	button:SetParent(settings.parent)
 	button:SetPoint('CENTER', unpack(settings.position))
+	button:Show()
 end
 
 function self:CreateButton(key)
@@ -558,13 +559,21 @@ function self:sort()
 end
 
 function self:trigger_bag_update()
+	local src
 	for _, container in self.containers do
 		for position = 1, GetContainerNumSlots(container) do
 			local name, _, locked = GetContainerItemInfo(container, position)
 			if name and not locked then
-				PickupContainerItem(container, position)
-				ClearCursor()
-				return
+				if src then
+					local dst = {container, position}
+					self:swap(src, dst)
+					ClearCursor()
+					PickupContainerItem(unpack(src))
+					PickupContainerItem(unpack(dst))
+					return
+				else
+					src = {container, position}
+				end
 			end
 		end
 	end
