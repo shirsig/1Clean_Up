@@ -24,15 +24,13 @@ self.bank = {
 
 self.ITEM_TYPES = { GetAuctionItemClasses() }
 
-local bank2inv, inv2bank, name2bank, name2inv = {}, {}, {}, {}
+local bank2inv, inv2bank = {}, {}
 for i = 1, 24 do
 	bank2inv[i] = BankButtonIDToInvSlotID(i)
 	inv2bank[BankButtonIDToInvSlotID(i)] = i
-	name2bank['BankFrameItem' .. i] = i
-	name2inv['BankFrameItem' .. i] = BankButtonIDToInvSlotID(i)
 end
 
-function self:Present(...)
+function self:present(...)
 	local called
 	return function()
 		if not called then
@@ -143,7 +141,7 @@ function self:PLAYER_LOGIN()
 		function PickupContainerItem(...)
 			local container, position = unpack(arg)
 			if IsAltKeyDown() then
-				for link in self:Present(GetContainerItemLink(container, position)) do
+				for link in self:present(GetContainerItemLink(container, position)) do
 					local slot_key = self:slot_key(container, position)
 					_Clean_Up_Settings.assignments[slot_key] = link
 					self:print(slot_key .. ' assigned to ' .. link)
@@ -420,7 +418,7 @@ do
 	local mapping, enabled = {}, true
 
 	local function resolve_position(bag, slot)
-		for position in self:Present(enabled and mapping[bag..':'..slot] or nil) do
+		for position in self:present(enabled and mapping[bag..':'..slot] or nil) do
 			return unpack(position)
 		end
 		return bag, slot
@@ -504,7 +502,7 @@ function self:sort()
 		for position = 1, GetContainerNumSlots(container) do
 			local slot = { container, position, class=class }
 			if _Clean_Up_Settings.reversed then tinsert(slots, slot) else tinsert(slots, 1, slot) end
-			for item_info in self:Present(self:info(container, position)) do
+			for item_info in self:present(self:info(container, position)) do
 				slot.item = item_info
 				tinsert(item_slots, slot)
 			end
@@ -525,7 +523,7 @@ function self:sort()
 	end
 
 	for _, slot in slots do
-		for link in self:Present(_Clean_Up_Settings.assignments[self:slot_key(unpack(slot))]) do
+		for link in self:present(_Clean_Up_Settings.assignments[self:slot_key(unpack(slot))]) do
 			for i, src in item_slots do
 				if src.item.link == link then
 					fill(slot, src)
@@ -552,7 +550,7 @@ function self:sort()
 
 	for _, slot in slots do
 		if not slot.filled then
-			for src in self:Present(tremove(item_slots, 1)) do
+			for src in self:present(tremove(item_slots, 1)) do
 				fill(slot, src)
 			end
 		end
@@ -610,7 +608,7 @@ do
 	local cache = {}
 	function self:Class(container)
 		if not cache[container] and container ~= 0 and container ~= BANK_CONTAINER then
-			for name in self:Present(GetBagName(container)) do		
+			for name in self:present(GetBagName(container)) do		
 				for class, info in self.CLASSES do
 					for _, itemID in info.containers do
 						if name == GetItemInfo(itemID) then
@@ -641,7 +639,7 @@ do
 	local cache = {}
 
 	function self:info(container, position)
-		for link in self:Present(GetContainerItemLink(container, position)) do
+		for link in self:present(GetContainerItemLink(container, position)) do
 			local _, count = GetContainerItemInfo(container, position)
 			local _, _, itemID, enchantID, suffixID, uniqueID = strfind(link, 'item:(%d+):(%d*):(%d*):(%d*)')
 			itemID = tonumber(itemID)
