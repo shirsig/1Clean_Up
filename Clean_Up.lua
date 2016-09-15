@@ -471,17 +471,18 @@ do
 
 	local function convert_tooltip(tt)
 		local bag_orig, inv_orig = tt.SetBagItem, tt.SetInventoryItem
-		function tt:SetBagItem(bag, slot, ...)
-			bag, slot = resolve_position(bag, slot)
-			if bag == -1 then
-				return inv_orig(self, 'player', bank2inv[slot])
+		local function bag_converted(self, container, position, ...)
+			container, position = resolve_position(container, position)
+			if container == BANK_CONTAINER then
+				return inv_orig(self, 'player', bank2inv[position])
 			else
-				return bag_orig(self, bag, slot, unpack(arg))
+				return bag_orig(self, container, position, unpack(arg))
 			end
 		end 
+		tt.SetBagItem = bag_converted
 		function tt:SetInventoryItem(unit, slot, ...)
 			if inv2bank[slot] then
-				return self:SetBagItem(-1, inv2bank[slot])
+				return bag_converted(self, -1, inv2bank[slot])
 			end
 			return inv_orig(self, unit, slot, unpack(arg))
 		end 
