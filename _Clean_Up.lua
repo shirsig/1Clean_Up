@@ -24,6 +24,14 @@ self.bank = {
 
 self.ITEM_TYPES = { GetAuctionItemClasses() }
 
+local bank2inv, inv2bank, name2bank, name2inv = {}, {}, {}, {}
+for i = 1, 24 do
+	bank2inv[i] = BankButtonIDToInvSlotID(i)
+	inv2bank[BankButtonIDToInvSlotID(i)] = i
+	name2bank['BankFrameItem' .. i] = i
+	name2inv['BankFrameItem' .. i] = BankButtonIDToInvSlotID(i)
+end
+
 function self:Present(...)
 	local called
 	return function()
@@ -308,6 +316,7 @@ function self:CreateButton(key)
 			PlaySoundFile[[Interface\AddOns\_Clean_Up\UI_BagSorting_01.ogg]]
 			self:Go(key)
 		elseif arg1 == 'RightButton' then
+			self.containers = self[key].containers
 			self:toggle_sorted_view()
 		end
 	end)
@@ -358,7 +367,7 @@ function self:TooltipInfo(container, position)
 	_Clean_Up_Tooltip:ClearLines()
 
 	if container == BANK_CONTAINER then
-		_Clean_Up_Tooltip:SetInventoryItem('player', BankButtonIDToInvSlotID(position))
+		_Clean_Up_Tooltip:SetInventoryItem('player', bank2inv[position])
 	else
 		_Clean_Up_Tooltip:SetBagItem(container, position)
 	end
@@ -417,37 +426,54 @@ do
 		return bag, slot
 	end
 
-	local function convert_function(f)
-		return function(bag, slot, ...)
-			bag, slot = resolve_position(bag, slot)
-			return f(bag, slot, unpack(arg))
-		end
-	end
-
-	local function convert_method(f)
-		return function(self, bag, slot, ...)
-			bag, slot = resolve_position(bag, slot)
-			return f(self, bag, slot, unpack(arg))
-		end
-	end
-
 	for _, name in { 'GetContainerItemLink', 'GetContainerItemInfo', 'PickupContainerItem', 'SplitContainerItem', 'UseContainerItem' } do
-		setglobal(name, convert_function(getglobal(name)))
+		local orig = getglobal(name)
+		setglobal(name, function(bag, slot, ...)
+			bag, slot = resolve_position(bag, slot)
+			return orig(bag, slot, unpack(arg))
+		end)
 	end
 
-	GameTooltip.SetBagItem = convert_method(GameTooltip.SetBagItem)
+	for k, v in { Link='Link', Texture='Info', Cooldown='Cooldown' } do
+		local inventory_name, container_name = 'GetInventoryItem' .. k, 'GetContainerItem' .. v
+		local orig = getglobal(inventory_name)
+		setglobal(inventory_name, function(unit, slot, ...)
+			if inv2bank[slot] then
+				return getglobal(container_name)(-1, inv2bank[slot])
+			end
+			return orig(unit, slot, unpack(arg))
+		end)
+	end
+
+	local function convert_tooltip(tt)
+		local bag_orig, inv_orig = tt.SetBagItem, tt.SetInventoryItem
+		function tt:SetBagItem(bag, slot, ...)
+			bag, slot = resolve_position(bag, slot)
+			if bag == -1 then
+				return inv_orig(self, 'player', bank2inv[slot])
+			else
+				return bag_orig(self, bag, slot, unpack(arg))
+			end
+		end 
+		function tt:SetInventoryItem(unit, slot, ...)
+			if inv2bank[slot] then
+				return self:SetBagItem(-1, inv2bank[slot])
+			end
+			return inv_orig(self, unit, slot, unpack(arg))
+		end 
+	end
+
+	convert_tooltip(GameTooltip)
 	do
 		local orig = CreateFrame
 		function CreateFrame(...)
 			local frame = orig(unpack(arg))
 			if arg[1] == 'GameTooltip' then
-				frame.SetBagItem = convert_method(frame.SetBagItem)
+				convert_tooltip(frame)
 			end
 			return frame
 		end
 	end
-
--- GameTooltip.SetInventoryItem('player', BankButtonIDToInvSlotID(position))
 
 	function self:swap(slot1, slot2)
 		mapping[self:slot_key(unpack(slot1))], mapping[self:slot_key(unpack(slot2))] = { resolve_position(unpack(slot2)) }, { resolve_position(unpack(slot1)) }
@@ -534,7 +560,7 @@ function self:sort()
 end
 
 function self:trigger_bag_update()
-	for container = -1, 10 do
+	for _, container in self.containers do
 		for position = 1, GetContainerNumSlots(container) do
 			local name, _, locked = GetContainerItemInfo(container, position)
 			if name and not locked then
