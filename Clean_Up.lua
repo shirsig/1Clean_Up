@@ -440,21 +440,29 @@ function self:vendor_step()
 end
 
 do
-	local mapping, enabled = {}, true
+	local mapping = {
+		BAGS = {},
+		BANK = {},
+	}
 
-	local function resolve_position(bag, slot)
-		local key = bag .. ':' .. slot
-		for position in self:present(enabled and mapping[key] or nil) do
-			return unpack(position)
+	local enabled = {
+		BAGS = true,
+		BANK = true,
+	}
+
+	local function resolve_position(container, position)
+		local key = container .. ':' .. position
+		for slot in self:present(enabled.BAGS and mapping.BAGS[key] or enabled.BANK and mapping.BANK[key] or nil) do
+			return unpack(slot)
 		end
-		return bag, slot
+		return container, position
 	end
 
 	for _, name in { 'GetContainerItemLink', 'GetContainerItemInfo', 'PickupContainerItem', 'SplitContainerItem', 'UseContainerItem' } do
 		local orig = getglobal(name)
-		setglobal(name, function(bag, slot, ...)
-			bag, slot = resolve_position(bag, slot)
-			return orig(bag, slot, unpack(arg))
+		setglobal(name, function(container, position, ...)
+			container, position = resolve_position(container, position)
+			return orig(container, position, unpack(arg))
 		end)
 	end
 
@@ -501,13 +509,13 @@ do
 	end
 
 	function self:swap(slot1, slot2)
-		if not enabled then return end
-		mapping[self:slot_key(unpack(slot1))], mapping[self:slot_key(unpack(slot2))] = { resolve_position(unpack(slot2)) }, { resolve_position(unpack(slot1)) }
+		if not enabled[self.key] then return end
+		mapping[self.key][self:slot_key(unpack(slot1))], mapping[self.key][self:slot_key(unpack(slot2))] = { resolve_position(unpack(slot2)) }, { resolve_position(unpack(slot1)) }
 	end
 
 	function self:toggle_sorted_view()
-		enabled = not enabled
-		if enabled then
+		enabled[self.key] = not enabled[self.key]
+		if enabled[self.key] then
 			BUTTON[self.key]:GetNormalTexture():SetDesaturated(false)
 			BUTTON[self.key]:GetPushedTexture():SetDesaturated(false)
 		else
