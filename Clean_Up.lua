@@ -493,36 +493,26 @@ do
 	end
 
 	function self:swap(slot1, slot2)
+		if not enabled then return end
 		mapping[self:slot_key(unpack(slot1))], mapping[self:slot_key(unpack(slot2))] = { resolve_position(unpack(slot2)) }, { resolve_position(unpack(slot1)) }
 	end
 
 	function self:toggle_sorted_view()
 		enabled = not enabled
 		if enabled then
-			BUTTON.BAGS:GetNormalTexture():SetDesaturated(false)
-			BUTTON.BAGS:GetPushedTexture():SetDesaturated(false)
-			BUTTON.BANK:GetNormalTexture():SetDesaturated(false)
-			BUTTON.BANK:GetPushedTexture():SetDesaturated(false)
+			BUTTON[self.key]:GetNormalTexture():SetDesaturated(false)
+			BUTTON[self.key]:GetPushedTexture():SetDesaturated(false)
 		else
-			BUTTON.BAGS:GetNormalTexture():SetDesaturated(true)
-			BUTTON.BAGS:GetPushedTexture():SetDesaturated(true)
-			BUTTON.BANK:GetNormalTexture():SetDesaturated(true)
-			BUTTON.BANK:GetPushedTexture():SetDesaturated(true)
+			BUTTON[self.key]:GetNormalTexture():SetDesaturated(true)
+			BUTTON[self.key]:GetPushedTexture():SetDesaturated(true)
 		end
 		self:trigger_update()
 	end
+end
 
-	local function nop() end
+do
+	local nop = function() end
 	function self:trigger_update()
-		local frame
-
-		-- for i = 1, NUM_CONTAINER_FRAMES do
-		-- 	local frame = getglobal('ContainerFrame' .. i)
-		-- 	if frame.size then
-		-- 		ContainerFrame_Update(frame)
-		-- 	end
-		-- end
-
 		event = 'BAG_UPDATE'
 		for _, container in CONTAINERS[self.key] do
 			arg1 = container
