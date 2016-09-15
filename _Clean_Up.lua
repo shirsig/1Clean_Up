@@ -5,9 +5,8 @@ self:SetScript('OnEvent', function() this[event](this) end)
 for _, event in { 'ADDON_LOADED', 'PLAYER_LOGIN', 'MERCHANT_SHOW', 'MERCHANT_CLOSED' } do
 	self:RegisterEvent(event)
 end
-self.orig = {}
 
-_Clean_Up_Settings = {
+Clean_Up_Settings = {
 	reversed = false,
 	assignments = {},
 	BAGS = {},
@@ -59,7 +58,7 @@ function self:ItemInvTypeKey(itemClass, itemSubClass, itemSlot)
 end
 
 function self.ADDON_LOADED()
-	if arg1 ~= '_Clean_Up' then
+	if arg1 ~= '!Clean_Up' then
 		return
 	end
 
@@ -135,7 +134,7 @@ function self.ADDON_LOADED()
 
 	self:SetupSlash()
 
-	CreateFrame('GameTooltip', '_Clean_Up_Tooltip', nil, 'GameTooltipTemplate')
+	CreateFrame('GameTooltip', 'Clean_Up_Tooltip', nil, 'GameTooltipTemplate')
 	self:create_button_placer()
 	self:create_button(BAGS)
 	self:create_button(BANK)
@@ -149,7 +148,7 @@ function self:PLAYER_LOGIN()
 			if IsAltKeyDown() then
 				for link in self:present(GetContainerItemLink(container, position)) do
 					local slot_key = self:slot_key(container, position)
-					_Clean_Up_Settings.assignments[slot_key] = link
+					Clean_Up_Settings.assignments[slot_key] = link
 					self:print(slot_key .. ' assigned to ' .. link)
 				end
 			else
@@ -164,8 +163,8 @@ function self:PLAYER_LOGIN()
 			local container, position = unpack(arg)
 			local slot_key = self:slot_key(container, position)
 			if IsAltKeyDown() then
-				if _Clean_Up_Settings.assignments[slot_key] then
-					_Clean_Up_Settings.assignments[slot_key] = nil
+				if Clean_Up_Settings.assignments[slot_key] then
+					Clean_Up_Settings.assignments[slot_key] = nil
 					self:print(slot_key .. ' freed')
 				end
 			else
@@ -279,8 +278,8 @@ function self:SetupSlash()
 
     SLASH_CLEANUPREVERSE1 = '/cleanupreverse'
     function SlashCmdList.CLEANUPREVERSE(arg)
-        _Clean_Up_Settings.reversed = not _Clean_Up_Settings.reversed
-        self:print('Sort order: '..(_Clean_Up_Settings.reversed and 'Reversed' or 'Standard'))
+        Clean_Up_Settings.reversed = not Clean_Up_Settings.reversed
+        self:print('Sort order: '..(Clean_Up_Settings.reversed and 'Reversed' or 'Standard'))
 	end
 end
 
@@ -288,9 +287,9 @@ function self:BrushButton(parent)
 	local button = CreateFrame('Button', nil, parent)
 	button:SetWidth(28)
 	button:SetHeight(26)
-	button:SetNormalTexture[[Interface\AddOns\_Clean_Up\Bags]]
+	button:SetNormalTexture[[Interface\AddOns\!Clean_Up\Bags]]
 	button:GetNormalTexture():SetTexCoord(.12109375, .23046875, .7265625, .9296875)
-	button:SetPushedTexture[[Interface\AddOns\_Clean_Up\Bags]]
+	button:SetPushedTexture[[Interface\AddOns\!Clean_Up\Bags]]
 	button:GetPushedTexture():SetTexCoord(.00390625, .11328125, .7265625, .9296875)
 	button:SetHighlightTexture[[Interface\Buttons\ButtonHilight-Square]]
 	button:GetHighlightTexture():ClearAllPoints()
@@ -301,14 +300,14 @@ function self:BrushButton(parent)
 end
 
 function self:UpdateButton(key)
-	local button, settings = BUTTON[key], _Clean_Up_Settings[key]
+	local button, settings = BUTTON[key], Clean_Up_Settings[key]
 	button:SetParent(settings.parent)
 	button:SetPoint('CENTER', unpack(settings.position))
 	button:Show()
 end
 
 function self:create_button(key)
-	local settings = _Clean_Up_Settings[key]
+	local settings = Clean_Up_Settings[key]
 	local button = self:BrushButton()
 	BUTTON[key] = button
 	button:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
@@ -320,7 +319,7 @@ function self:create_button(key)
 	end)
 	button:SetScript('OnClick', function()
 		if arg1 == 'LeftButton' then
-			PlaySoundFile[[Interface\AddOns\_Clean_Up\UI_BagSorting_01.ogg]]
+			PlaySoundFile[[Interface\AddOns\!Clean_Up\UI_BagSorting_01.ogg]]
 			self.key = key
 			self:Show()
 		elseif arg1 == 'RightButton' then
@@ -360,7 +359,7 @@ function self:create_button_placer()
 		if not this:IsMouseEnabled() and GetMouseFocus() then
 			local parent = GetMouseFocus()
 			local parentScale, parentX, parentY = parent:GetEffectiveScale(), parent:GetCenter()
-			_Clean_Up_Settings[this.key] = { parent=parent:GetName(), position={ x/parentScale - parentX, y/parentScale - parentY } }
+			Clean_Up_Settings[this.key] = { parent=parent:GetName(), position={ x/parentScale - parentX, y/parentScale - parentY } }
 			self:UpdateButton(this.key)
 			this:EnableMouse(true)
 			this:Hide()
@@ -371,18 +370,18 @@ end
 function self:tooltip_info(container, position)
 	local chargesPattern = '^' .. gsub(gsub(ITEM_SPELL_CHARGES_P1, '%%d', '(%%d+)'), '%%%d+%$d', '(%%d+)') .. '$'
 
-	_Clean_Up_Tooltip:SetOwner(self, ANCHOR_NONE)
-	_Clean_Up_Tooltip:ClearLines()
+	Clean_Up_Tooltip:SetOwner(self, ANCHOR_NONE)
+	Clean_Up_Tooltip:ClearLines()
 
 	if container == BANK_CONTAINER then
-		_Clean_Up_Tooltip:SetInventoryItem('player', bank2inv[position])
+		Clean_Up_Tooltip:SetInventoryItem('player', bank2inv[position])
 	else
-		_Clean_Up_Tooltip:SetBagItem(container, position)
+		Clean_Up_Tooltip:SetBagItem(container, position)
 	end
 
 	local charges, usable, soulbound, quest, conjured
-	for i = 1, _Clean_Up_Tooltip:NumLines() do
-		local text = getglobal('_Clean_Up_TooltipTextLeft' .. i):GetText()
+	for i = 1, Clean_Up_Tooltip:NumLines() do
+		local text = getglobal('Clean_Up_TooltipTextLeft' .. i):GetText()
 
 		local _, _, chargeString = strfind(text, chargesPattern)
 		if chargeString then
@@ -427,20 +426,28 @@ end
 do
 	local mapping, enabled = {}, true
 
-	local function resolve_position(bag, slot)
-		local key = bag .. ':' .. slot
-		for position in self:present(enabled and mapping[key] or nil) do
-			return unpack(position)
+	local function resolve_position(bag, slot, reversed)
+		if reversed then
+			for key, position in mapping do
+				if position[1] == bag and position[2] == slot then
+					local _, _, bag, slot = strfind(key, '(%-?%d+):(%d+)')
+					return bag, slot
+				end
+			end
+		else
+			local key = bag .. ':' .. slot
+			for position in self:present(enabled and mapping[key] or nil) do
+				return unpack(position)
+			end
 		end
 		return bag, slot
 	end
 
 	for _, name in { 'GetContainerItemLink', 'GetContainerItemInfo', 'PickupContainerItem', 'SplitContainerItem', 'UseContainerItem' } do
-		local name = name
-		self.orig[name] = getglobal(name)
+		local orig = getglobal(name)
 		setglobal(name, function(bag, slot, ...)
 			bag, slot = resolve_position(bag, slot)
-			return self.orig[name](bag, slot, unpack(arg))
+			return orig(bag, slot, unpack(arg))
 		end)
 	end
 
@@ -504,16 +511,81 @@ do
 		end
 		self:trigger_update()
 	end
+
+	local function nop() end
+	function self:trigger_update()
+		local frame
+
+		-- for i = 1, NUM_CONTAINER_FRAMES do
+		-- 	local frame = getglobal('ContainerFrame' .. i)
+		-- 	if frame.size then
+		-- 		ContainerFrame_Update(frame)
+		-- 	end
+		-- end
+
+		event = 'BAG_UPDATE'
+		for i = -1, 10 do
+			arg1 = i
+			local frame = self
+			while true do
+				frame = EnumerateFrames(frame)
+				if not frame then
+					break
+				end
+				this = frame
+				pcall(frame.GetScript and frame:GetScript('OnEvent') or nop)
+			end
+		end
+		event = 'BANKFRAME_OPENED'
+		this = BankFrame
+		BankFrame_OnEvent()
+		local frame = self
+		while true do
+			frame = EnumerateFrames(frame)
+			if not frame then
+				break
+			end
+			this = frame
+			pcall(frame.GetScript and frame:GetScript('OnEvent') or nop)
+		end
+
+		-- for _, container in CONTAINERS[self.key] do
+		-- 	for position = 1, GetContainerNumSlots(container) do
+		-- 		local container, position = resolve_position(container, position, true)
+		-- 		if GetContainerItemInfo(container, position) then
+		-- 			if self.key == BANK then
+		-- 				local src = { container, position }
+		-- 				for i = getn(CONTAINERS.BANK), 1, -1 do
+		-- 					local container = CONTAINERS.BANK[i]
+		-- 					for position = 1, GetContainerNumSlots(container) do
+		-- 						local dst = { resolve_position(container, position, true) }
+		-- 						self:swap(src, dst)
+		-- 						p(src, dst)
+		-- 						ClearCursor()
+		-- 						PickupContainerItem(unpack(src))
+		-- 						PickupContainerItem(unpack(dst))
+		-- 						return
+		-- 					end
+		-- 				end
+		-- 			else
+		-- 				PickupContainerItem(container, position)
+		-- 				ClearCursor()
+		-- 				return
+		-- 			end
+		-- 		end
+		-- 	end
+		-- end
+	end
 end
 
 function self:sort()
 	local slots, item_slots = {}, {}
 
 	for _, container in CONTAINERS[self.key] do
-		local class = self:Class(container)
+		local class = self:class(container)
 		for position = 1, GetContainerNumSlots(container) do
 			local slot = { container, position, class=class }
-			if _Clean_Up_Settings.reversed then tinsert(slots, slot) else tinsert(slots, 1, slot) end
+			if Clean_Up_Settings.reversed then tinsert(slots, slot) else tinsert(slots, 1, slot) end
 			for item_info in self:present(self:info(container, position)) do
 				slot.item = item_info
 				tinsert(item_slots, slot)
@@ -535,7 +607,7 @@ function self:sort()
 	end
 
 	for _, slot in slots do
-		for link in self:present(_Clean_Up_Settings.assignments[self:slot_key(unpack(slot))]) do
+		for link in self:present(Clean_Up_Settings.assignments[self:slot_key(unpack(slot))]) do
 			for i, src in item_slots do
 				if src.item.link == link then
 					fill(slot, src)
@@ -564,31 +636,6 @@ function self:sort()
 		if not slot.filled then
 			for src in self:present(tremove(item_slots, 1)) do
 				fill(slot, src)
-			end
-		end
-	end
-end
-
-function self:trigger_update()
-	local src
-	for _, container in CONTAINERS[self.key] do
-		for position = 1, GetContainerNumSlots(container) do
-			local name, _, locked = GetContainerItemInfo(container, position)
-			if name and not locked then
-				if src then
-					local dst = { container, position }
-					self:swap(src, dst)
-					ClearCursor()
-					PickupContainerItem(unpack(src))
-					PickupContainerItem(unpack(dst))
-					return
-				elseif self.key == BANK then
-					src = { container, position }
-				else
-					PickupContainerItem(container, position)
-					ClearCursor()
-					return
-				end
 			end
 		end
 	end
@@ -625,7 +672,7 @@ end
 
 do
 	local cache = {}
-	function self:Class(container)
+	function self:class(container)
 		if not cache[container] and container ~= 0 and container ~= BANK_CONTAINER then
 			for name in self:present(GetBagName(container)) do		
 				for class, info in self.CLASSES do
@@ -661,8 +708,8 @@ do
 		for link in self:present(GetContainerItemLink(container, position)) do
 			local _, count = GetContainerItemInfo(container, position)
 			local _, _, itemID, enchantID, suffixID, uniqueID = strfind(link, 'item:(%d+):(%d*):(%d*):(%d*)')
-			itemID = tonumber(itemID)
-			local _, _, quality, _, type, subType, stack, invType = GetItemInfo(itemID)
+			itemID, enchantID, suffixID, uniqueID = tonumber(itemID), tonumber(enchantID), tonumber(suffixID), tonumber(uniqueID)
+			local _, _, quality, _, type, subType, _, invType = GetItemInfo(itemID)
 			local charges, usable, soulbound, quest, conjured = self:tooltip_info(container, position)
 
 			local key = format('%s:%s:%s:%s:%s:%s', itemID, enchantID, suffixID, uniqueID, charges or count, (soulbound and 1 or 0))
