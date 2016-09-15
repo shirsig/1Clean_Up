@@ -524,8 +524,8 @@ do
 		-- end
 
 		event = 'BAG_UPDATE'
-		for i = -1, 10 do
-			arg1 = i
+		for _, container in CONTAINERS[self.key] do
+			arg1 = container
 			local frame = self
 			while true do
 				frame = EnumerateFrames(frame)
@@ -536,45 +536,21 @@ do
 				pcall(frame.GetScript and frame:GetScript('OnEvent') or nop)
 			end
 		end
-		event = 'BANKFRAME_OPENED'
-		this = BankFrame
-		BankFrame_OnEvent()
-		local frame = self
-		while true do
-			frame = EnumerateFrames(frame)
-			if not frame then
-				break
-			end
-			this = frame
-			pcall(frame.GetScript and frame:GetScript('OnEvent') or nop)
-		end
 
-		-- for _, container in CONTAINERS[self.key] do
-		-- 	for position = 1, GetContainerNumSlots(container) do
-		-- 		local container, position = resolve_position(container, position, true)
-		-- 		if GetContainerItemInfo(container, position) then
-		-- 			if self.key == BANK then
-		-- 				local src = { container, position }
-		-- 				for i = getn(CONTAINERS.BANK), 1, -1 do
-		-- 					local container = CONTAINERS.BANK[i]
-		-- 					for position = 1, GetContainerNumSlots(container) do
-		-- 						local dst = { resolve_position(container, position, true) }
-		-- 						self:swap(src, dst)
-		-- 						p(src, dst)
-		-- 						ClearCursor()
-		-- 						PickupContainerItem(unpack(src))
-		-- 						PickupContainerItem(unpack(dst))
-		-- 						return
-		-- 					end
-		-- 				end
-		-- 			else
-		-- 				PickupContainerItem(container, position)
-		-- 				ClearCursor()
-		-- 				return
-		-- 			end
-		-- 		end
-		-- 	end
-		-- end
+		if self.key == BANK then
+			event = 'BANKFRAME_OPENED'
+			this = BankFrame
+			BankFrame_OnEvent()
+			local frame = self
+			while true do
+				frame = EnumerateFrames(frame)
+				if not frame then
+					break
+				end
+				this = frame
+				pcall(frame.GetScript and frame:GetScript('OnEvent') or nop)
+			end
+		end
 	end
 end
 
