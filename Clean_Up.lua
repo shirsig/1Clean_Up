@@ -528,9 +528,11 @@ do
 		if enabled[self.key] then
 			BUTTON[self.key]:GetNormalTexture():SetDesaturated(false)
 			BUTTON[self.key]:GetPushedTexture():SetDesaturated(false)
+			BUTTON[self.key]:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
 		else
 			BUTTON[self.key]:GetNormalTexture():SetDesaturated(true)
 			BUTTON[self.key]:GetPushedTexture():SetDesaturated(true)
+			BUTTON[self.key]:RegisterForClicks'RightButtonUp'
 		end
 		self.container_updater:Show()
 	end
