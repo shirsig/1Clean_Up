@@ -479,7 +479,7 @@ do
 		return container, position
 	end
 
-	for _, name in { 'GetContainerItemLink', 'GetContainerItemInfo', 'PickupContainerItem', 'SplitContainerItem', 'UseContainerItem' } do
+	for _, name in { 'GetContainerItemLink', 'GetContainerItemInfo', 'GetContainerItemCooldown', 'PickupContainerItem', 'SplitContainerItem', 'UseContainerItem' } do
 		local orig = getglobal(name)
 		setglobal(name, function(container, position, ...)
 			container, position = resolve_position(container, position)
