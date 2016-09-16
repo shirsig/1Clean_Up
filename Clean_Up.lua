@@ -46,15 +46,15 @@ function self:present(...)
 end
 
 function self:ItemTypeKey(itemClass)
-	return self:Key(self.ITEM_TYPES, itemClass) or 0
+	return self:key(self.ITEM_TYPES, itemClass) or 0
 end
 
 function self:ItemSubTypeKey(itemClass, itemSubClass)
-	return self:Key({ GetAuctionItemSubClasses(self:ItemTypeKey(itemClass)) }, itemClass) or 0
+	return self:key({ GetAuctionItemSubClasses(self:ItemTypeKey(itemClass)) }, itemClass) or 0
 end
 
 function self:ItemInvTypeKey(itemClass, itemSubClass, itemSlot)
-	return self:Key({ GetAuctionInvTypes(self:ItemTypeKey(itemClass), self:ItemSubTypeKey(itemSubClass)) }, itemSlot) or 0
+	return self:key({ GetAuctionInvTypes(self:ItemTypeKey(itemClass), self:ItemSubTypeKey(itemSubClass)) }, itemSlot) or 0
 end
 
 function self.ADDON_LOADED()
@@ -132,7 +132,7 @@ function self.ADDON_LOADED()
 		},
 	}
 
-	self:SetupSlash()
+	self:setup_slash()
 
 	CreateFrame('GameTooltip', 'Clean_Up_Tooltip', nil, 'GameTooltipTemplate')
 	self:create_button_placer()
@@ -208,12 +208,12 @@ function self:PLAYER_LOGIN()
 		end
 	end
 
-	self.key = BAGS
+	self.mode = BAGS
 	self:sort()
 end
 
 function self:UPDATE()
-	if self.key == BAGS and self.model then
+	if self.mode == BAGS and self.model then
 		if self:vendor_step() then
 			return
 		end
@@ -236,7 +236,7 @@ end
 
 function self:BANKFRAME_OPENED()
 	self.at_bank = true
-	self.key = BANK
+	self.mode = BANK
 	self:sort()
 end
 
@@ -245,11 +245,11 @@ function self:BANKFRAME_CLOSED()
 end
 
 function self:MERCHANT_SHOW()
-	self.atMerchant = true
+	self.at_merchant = true
 end
 
 function self:MERCHANT_CLOSED()
-	self.atMerchant = false
+	self.at_merchant = false
 end
 
 function self:print(msg)
@@ -288,7 +288,7 @@ function self:lt(a, b)
 	end
 end
 
-function self:Key(table, value)
+function self:key(table, value)
 	for k, v in table do
 		if v == value then
 			return k
@@ -300,16 +300,16 @@ function self:slot_key(container, position)
 	return container..':'..position
 end
 
-function self:SetupSlash()
+function self:setup_slash()
   	SLASH_CLEANUPBAGS1 = '/cleanupbags'
 	function SlashCmdList.CLEANUPBAGS(arg)
-		self.button_placer.key = BAGS
+		self.button_placer.mode = BAGS
 		self.button_placer:Show()
 	end
 
 	SLASH_CLEANUPBANK1 = '/cleanupbank'
 	function SlashCmdList.CLEANUPBANK(arg)
-		self.button_placer.key = BANK
+		self.button_placer.mode = BANK
 		self.button_placer:Show()
 	end
 
@@ -320,7 +320,7 @@ function self:SetupSlash()
 	end
 end
 
-function self:BrushButton(parent)
+function self:brush_button(parent)
 	local button = CreateFrame('Button', nil, parent)
 	button:SetWidth(28)
 	button:SetHeight(26)
@@ -336,37 +336,37 @@ function self:BrushButton(parent)
 	return button
 end
 
-function self:UpdateButton(key)
-	local button, settings = BUTTON[key], Clean_Up_Settings[key]
+function self:update_button(mode)
+	local button, settings = BUTTON[mode], Clean_Up_Settings[mode]
 	button:SetParent(settings.parent)
 	button:SetPoint('CENTER', unpack(settings.position))
 	button:Show()
 end
 
-function self:create_button(key)
-	local settings = Clean_Up_Settings[key]
-	local button = self:BrushButton()
-	BUTTON[key] = button
+function self:create_button(mode)
+	local settings = Clean_Up_Settings[mode]
+	local button = self:brush_button()
+	BUTTON[mode] = button
 	button:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
 	button:SetScript('OnUpdate', function()
 		if settings.parent and getglobal(settings.parent) then
-			self:UpdateButton(key)
+			self:update_button(mode)
 			this:SetScript('OnUpdate', nil)
 		end
 	end)
 	button:SetScript('OnClick', function()
 		if arg1 == 'LeftButton' then
 			PlaySoundFile[[Interface\AddOns\!Clean_Up\UI_BagSorting_01.ogg]]
-			self.key = key
+			self.mode = mode
 			self:Show()
 		elseif arg1 == 'RightButton' then
-			self.key = key
+			self.mode = mode
 			self:toggle_sorted_view()
 		end
 	end)
 	button:SetScript('OnEnter', function()
 		GameTooltip:SetOwner(this)
-		GameTooltip:AddLine(TOOLTIP[key])
+		GameTooltip:AddLine(TOOLTIP[mode])
 		GameTooltip:Show()
 	end)
 	button:SetScript('OnLeave', function()
@@ -384,7 +384,7 @@ function self:create_button_placer()
 	local escape_interceptor = CreateFrame('EditBox', nil, frame)
 	escape_interceptor:SetScript('OnEscapePressed', function() frame:Hide() end)
 
-	local button_preview = self:BrushButton(frame)
+	local button_preview = self:brush_button(frame)
 	button_preview:EnableMouse(false)
 	button_preview:SetAlpha(.5)
 
@@ -396,8 +396,8 @@ function self:create_button_placer()
 		if not this:IsMouseEnabled() and GetMouseFocus() then
 			local parent = GetMouseFocus()
 			local parentScale, parentX, parentY = parent:GetEffectiveScale(), parent:GetCenter()
-			Clean_Up_Settings[this.key] = { parent=parent:GetName(), position={ x/parentScale - parentX, y/parentScale - parentY } }
-			self:UpdateButton(this.key)
+			Clean_Up_Settings[this.mode] = { parent=parent:GetName(), position={ x/parentScale - parentX, y/parentScale - parentY } }
+			self:update_button(this.mode)
 			this:EnableMouse(true)
 			this:Hide()
 		end
@@ -420,9 +420,9 @@ function self:tooltip_info(container, position)
 	for i = 1, Clean_Up_Tooltip:NumLines() do
 		local text = getglobal('Clean_Up_TooltipTextLeft' .. i):GetText()
 
-		local _, _, chargeString = strfind(text, chargesPattern)
-		if chargeString then
-			charges = tonumber(chargeString)
+		local _, _, charge_string = strfind(text, chargesPattern)
+		if charge_string then
+			charges = tonumber(charge_string)
 		elseif strfind(text, '^' .. ITEM_SPELL_TRIGGER_ONUSE) then
 			usable = true
 		elseif text == ITEM_SOULBOUND then
@@ -447,7 +447,7 @@ end
 
 function self:vendor_step()
 	local found
-	if self.atMerchant then
+	if self.at_merchant then
 		for _, container in CONTAINERS.BAGS do
 			for position=1,GetContainerNumSlots(container) do
 				if self:Trash(container, position) then
@@ -519,20 +519,20 @@ do
 	self:convert_tooltip(GameTooltip)
 
 	function self:swap(slot1, slot2)
-		if not enabled[self.key] then return end
-		mapping[self.key][self:slot_key(unpack(slot1))], mapping[self.key][self:slot_key(unpack(slot2))] = { resolve_position(unpack(slot2)) }, { resolve_position(unpack(slot1)) }
+		if not enabled[self.mode] then return end
+		mapping[self.mode][self:slot_key(unpack(slot1))], mapping[self.mode][self:slot_key(unpack(slot2))] = { resolve_position(unpack(slot2)) }, { resolve_position(unpack(slot1)) }
 	end
 
 	function self:toggle_sorted_view()
-		enabled[self.key] = not enabled[self.key]
-		if enabled[self.key] then
-			BUTTON[self.key]:GetNormalTexture():SetDesaturated(false)
-			BUTTON[self.key]:GetPushedTexture():SetDesaturated(false)
-			BUTTON[self.key]:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
+		enabled[self.mode] = not enabled[self.mode]
+		if enabled[self.mode] then
+			BUTTON[self.mode]:GetNormalTexture():SetDesaturated(false)
+			BUTTON[self.mode]:GetPushedTexture():SetDesaturated(false)
+			BUTTON[self.mode]:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
 		else
-			BUTTON[self.key]:GetNormalTexture():SetDesaturated(true)
-			BUTTON[self.key]:GetPushedTexture():SetDesaturated(true)
-			BUTTON[self.key]:RegisterForClicks'RightButtonUp'
+			BUTTON[self.mode]:GetNormalTexture():SetDesaturated(true)
+			BUTTON[self.mode]:GetPushedTexture():SetDesaturated(true)
+			BUTTON[self.mode]:RegisterForClicks'RightButtonUp'
 		end
 		self.container_updater:Show()
 	end
@@ -580,7 +580,7 @@ end
 function self:sort()
 	local slots, item_slots = {}, {}
 
-	for _, container in CONTAINERS[self.key] do
+	for _, container in CONTAINERS[self.mode] do
 		local class = self:class(container)
 		for position = 1, GetContainerNumSlots(container) do
 			local slot = { container, position, class=class }
@@ -643,7 +643,7 @@ end
 function self:stack_step()
 	local complete = true
 	local partial_stacks = {}
-	for _, container in CONTAINERS[self.key] do
+	for _, container in CONTAINERS[self.mode] do
 		for position = 1, GetContainerNumSlots(container) do
 			local name, count, locked = GetContainerItemInfo(container, position)
 			local max_stack = self:max_stack(container, position)
