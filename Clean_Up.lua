@@ -210,8 +210,6 @@ function self:PLAYER_LOGIN()
 
 	self.key = BAGS
 	self:sort()
-	self.key = BANK
-	self:sort()
 end
 
 function self:UPDATE()
@@ -238,6 +236,8 @@ end
 
 function self:BANKFRAME_OPENED()
 	self.at_bank = true
+	self.key = BANK
+	self:sort()
 end
 
 function self:BANKFRAME_CLOSED()
