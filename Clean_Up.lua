@@ -187,6 +187,27 @@ function self:PLAYER_LOGIN()
 		end
 	end
 
+	do
+		local frame = GameTooltip
+		while true do
+			frame = EnumerateFrames(frame)
+			if not frame then break end
+			if frame.GetObjectType and frame:GetObjectType() == 'GameTooltip' then
+				self:convert_tooltip(frame)
+			end
+		end
+	end
+	do
+		local orig = CreateFrame
+		function CreateFrame(...)
+			local frame = orig(unpack(arg))
+			if arg[1] == 'GameTooltip' then
+				self:convert_tooltip(frame)
+			end
+			return frame
+		end
+	end
+
 	self.key = BAGS
 	self:sort()
 	self.key = BANK
@@ -477,7 +498,7 @@ do
 		end)
 	end
 
-	local function convert_tooltip(tt)
+	function self:convert_tooltip(tt)
 		local bag_orig, inv_orig = tt.SetBagItem, tt.SetInventoryItem
 		local function bag_converted(self, container, position, ...)
 			container, position = resolve_position(container, position)
@@ -495,18 +516,7 @@ do
 			return inv_orig(self, unit, slot, unpack(arg))
 		end 
 	end
-
-	convert_tooltip(GameTooltip)
-	do
-		local orig = CreateFrame
-		function CreateFrame(...)
-			local frame = orig(unpack(arg))
-			if arg[1] == 'GameTooltip' then
-				convert_tooltip(frame)
-			end
-			return frame
-		end
-	end
+	self:convert_tooltip(GameTooltip)
 
 	function self:swap(slot1, slot2)
 		if not enabled[self.key] then return end
