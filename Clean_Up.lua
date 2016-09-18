@@ -316,7 +316,7 @@ function self:setup_slash()
     SLASH_CLEANUPREVERSE1 = '/cleanupreverse'
     function SlashCmdList.CLEANUPREVERSE(arg)
         Clean_Up_Settings.reversed = not Clean_Up_Settings.reversed
-        self:print('Sort order: '..(Clean_Up_Settings.reversed and 'Reversed' or 'Standard'))
+        self:print('Sort order: ' .. (Clean_Up_Settings.reversed and 'Reversed' or 'Standard'))
 	end
 end
 
@@ -439,7 +439,7 @@ end
 
 function self:Trash(container, position)
 	for itemID in string.gfind(GetContainerItemLink(container, position) or '', 'item:(%d+)') do
-		if ({GetItemInfo(itemID)})[3] == 0 then
+		if ({ GetItemInfo(itemID) })[3] == 0 then
 			return true
 		end
 	end
