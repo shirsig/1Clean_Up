@@ -617,19 +617,20 @@ function self:sort()
 		end
 	end
 
-	for key, class in self.CLASSES do
-		for _, slot in slots do
-			if slot.class == key and not slot.filled then
-				for i, src in item_slots do
-					if src.item.class == key then
-						fill(slot, src)
-						tremove(item_slots, i)
-						break
-					end
-			    end
-		    end
-		end
-	end
+	-- TODO this must also use real moves like stacking
+	-- for key, class in self.CLASSES do
+	-- 	for _, slot in slots do
+	-- 		if slot.class == key and not slot.filled then
+	-- 			for i, src in item_slots do
+	-- 				if src.item.class == key then
+	-- 					fill(slot, src)
+	-- 					tremove(item_slots, i)
+	-- 					break
+	-- 				end
+	-- 		    end
+	-- 	    end
+	-- 	end
+	-- end
 
 	for _, slot in slots do
 		if not slot.filled then
